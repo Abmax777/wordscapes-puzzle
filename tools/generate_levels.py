@@ -61,6 +61,7 @@ COMPACTNESS_SAMPLE = 12      # best-scoring placements to explore per word
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE_LIST = Path(__file__).resolve().parent / "wordlist-source.txt"
+COMMON_LIST = Path(__file__).resolve().parent / "wordlist-common.txt"
 BLOCKLIST = Path(__file__).resolve().parent / "blocklist.txt"
 ASSETS = ROOT / "app" / "src" / "main" / "assets"
 
@@ -83,25 +84,43 @@ def load_blocklist() -> set[str]:
     return out
 
 
-def load_words() -> set[str]:
-    """Lowercase alphabetic words only. Drops proper nouns, possessives, and
-    anything on the blocklist."""
-    blocked = load_blocklist()
+def _read_list(path: Path, blocked: set[str]) -> set[str]:
     out: set[str] = set()
-    with SOURCE_LIST.open(encoding="utf-8", errors="ignore") as fh:
+    with path.open(encoding="utf-8", errors="ignore") as fh:
         for line in fh:
             w = line.strip()
             if not w or "'" in w:
                 continue
             if not w.isascii() or not w.isalpha() or not w.islower():
                 continue
-            if len(w) < MIN_WORD_LEN:
-                continue
-            if w in blocked:
+            if len(w) < MIN_WORD_LEN or w in blocked:
                 continue
             out.add(w)
-    print(f"blocklist: {len(blocked)} entries")
     return out
+
+
+def load_words() -> tuple[set[str], set[str]]:
+    """Return (common, full).
+
+    Two tiers, because "is this a real word?" and "should a player be REQUIRED
+    to find this word?" are different questions.
+
+    * common - frequency-filtered (see tools/build_common_list.py). Only these
+      may be chosen as a base word or placed in a grid. If progress depends on
+      finding it, it has to be a word people actually know.
+    * full   - the whole SCOWL list. Used only to decide whether a swiped word
+      counts as a bonus. Being generous here is free: an obscure bonus word is
+      a pleasant surprise, never a blocker.
+
+    The first build ignored this distinction and shipped a level 1 requiring
+    SARI, SITAR and ASTIR.
+    """
+    blocked = load_blocklist()
+    full = _read_list(SOURCE_LIST, blocked)
+    common = _read_list(COMMON_LIST, blocked) & full
+    print(f"blocklist: {len(blocked)} entries")
+    print(f"vocabulary: {len(common)} common (grid-eligible) / {len(full)} full (bonus)")
+    return common, full
 
 
 def signature(word: str) -> tuple[tuple[str, int], ...]:
@@ -277,9 +296,9 @@ def build_grid(words: list[str], rng: random.Random) -> Grid | None:
 
 
 # ── Level assembly ───────────────────────────────────────────────────────────
-def build_levels(words: set[str], rng: random.Random) -> list[dict]:
+def build_levels(common: set[str], full: set[str], rng: random.Random) -> list[dict]:
     by_len: dict[int, list[str]] = {}
-    for w in words:
+    for w in common:
         by_len.setdefault(len(w), []).append(w)
     for lst in by_len.values():
         lst.sort()
@@ -299,16 +318,23 @@ def build_levels(words: set[str], rng: random.Random) -> list[dict]:
                 continue
 
             base_counts = Counter(base)
-            subs = [
-                w for w in words
+
+            # Placeable words: common tier only.
+            placeable = [
+                w for w in common
                 if MIN_WORD_LEN <= len(w) <= base_len and is_subanagram(w, base_counts)
             ]
-            if len(subs) < MIN_GRID_WORDS + 3:
+            # Bonus-eligible words: full tier.
+            subs = [
+                w for w in full
+                if MIN_WORD_LEN <= len(w) <= base_len and is_subanagram(w, base_counts)
+            ]
+            if len(placeable) < MIN_GRID_WORDS + 2:
                 continue
 
             # Longest-first improves the odds the backtracker finds a compact grid
-            subs.sort(key=lambda w: (-len(w), w))
-            shortlist = subs[: MAX_GRID_WORDS + 8]
+            placeable.sort(key=lambda w: (-len(w), w))
+            shortlist = placeable[: MAX_GRID_WORDS + 8]
 
             grid = build_grid(shortlist, rng)
             if grid is None or len(grid.placed) < MIN_GRID_WORDS:
@@ -366,11 +392,10 @@ def build_dictionary(levels: list[dict], words: set[str]) -> list[str]:
 # ── Entry point ──────────────────────────────────────────────────────────────
 def main() -> None:
     rng = random.Random(SEED)
-    words = load_words()
-    print(f"word list: {len(words)} usable words")
+    common, full = load_words()
 
-    levels = build_levels(words, rng)
-    dictionary = build_dictionary(levels, words)
+    levels = build_levels(common, full, rng)
+    dictionary = build_dictionary(levels, full)
 
     ASSETS.mkdir(parents=True, exist_ok=True)
 
