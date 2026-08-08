@@ -1,0 +1,86 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Version catalog
+#
+# Toolchain block below is pinned to the AGP 9.x generation, matching the
+# Gradle 9.x wrapper this project was generated with.
+#
+#   AGP 9.2.1   → requires Gradle 9.4.1 (min AND default), JDK 17, compileSdk max 37
+#                 9.2.1 is the ceiling this Android Studio install supports;
+#                 do not bump AGP without bumping Studio first.
+#   Kotlin 2.3.21 / KSP 2.3.9  (KSP now uses unified versioning, not <kotlin>-<ksp>)
+#   Dagger 2.59.2 — first release with the AGP 9 jetifier fix
+#
+# There is no `kotlin-android` plugin alias. AGP 9 has built-in Kotlin support
+# and applying KGP's android plugin on top of it fails the build outright.
+# The `kotlin` version below is still used — Kotlin *compiler plugins*
+# (compose, serialization) are versioned in lockstep with KGP and are applied
+# separately. AGP 9.0 carries KGP 2.2.10 internally and upgrades to whatever
+# the compiler plugins request, so 2.3.21 is fine.
+#
+# If a sync fails with "Could not find <artifact>:<version>", the version is
+# stale, not the wiring. AS autocompletes valid versions inside this file
+# (Ctrl+Space on the version string).
+# ─────────────────────────────────────────────────────────────────────────────
+
+[versions]
+agp                     = "9.2.1"
+kotlin                  = "2.3.21"
+ksp                     = "2.3.9"
+hilt                    = "2.59.2"
+
+compose-bom             = "2025.05.00"
+activity-compose        = "1.9.3"
+navigation-compose      = "2.8.7"
+hilt-navigation-compose = "1.2.0"
+datastore               = "1.1.1"
+lifecycle               = "2.8.7"
+coroutines              = "1.9.0"
+serialization-json      = "1.7.3"
+junit                   = "4.13.2"
+
+[libraries]
+# ── Compose ──────────────────────────────────────────────────────────────────
+androidx-compose-bom                = { group = "androidx.compose",           name = "compose-bom",           version.ref = "compose-bom" }
+androidx-compose-ui                 = { group = "androidx.compose.ui",        name = "ui" }
+androidx-compose-ui-graphics        = { group = "androidx.compose.ui",        name = "ui-graphics" }
+androidx-compose-ui-tooling         = { group = "androidx.compose.ui",        name = "ui-tooling" }
+androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui",        name = "ui-tooling-preview" }
+androidx-compose-material3          = { group = "androidx.compose.material3", name = "material3" }
+androidx-compose-animation          = { group = "androidx.compose.animation", name = "animation" }
+androidx-compose-foundation         = { group = "androidx.compose.foundation", name = "foundation" }
+
+# ── Activity ─────────────────────────────────────────────────────────────────
+androidx-activity-compose         = { group = "androidx.activity",  name = "activity-compose",       version.ref = "activity-compose" }
+
+# ── Navigation ───────────────────────────────────────────────────────────────
+androidx-navigation-compose       = { group = "androidx.navigation", name = "navigation-compose",    version.ref = "navigation-compose" }
+
+# ── Hilt ─────────────────────────────────────────────────────────────────────
+hilt-android                      = { group = "com.google.dagger",  name = "hilt-android",           version.ref = "hilt" }
+hilt-android-compiler             = { group = "com.google.dagger",  name = "hilt-android-compiler",  version.ref = "hilt" }
+hilt-navigation-compose           = { group = "androidx.hilt",      name = "hilt-navigation-compose", version.ref = "hilt-navigation-compose" }
+
+# ── DataStore ────────────────────────────────────────────────────────────────
+androidx-datastore-preferences    = { group = "androidx.datastore", name = "datastore-preferences",  version.ref = "datastore" }
+
+# ── Lifecycle / ViewModel ────────────────────────────────────────────────────
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+androidx-lifecycle-runtime-compose   = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose",   version.ref = "lifecycle" }
+
+# ── Coroutines ───────────────────────────────────────────────────────────────
+kotlinx-coroutines-android        = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+
+# ── Serialization (level JSON + type-safe nav routes) ────────────────────────
+kotlinx-serialization-json        = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization-json" }
+
+# ── Testing ──────────────────────────────────────────────────────────────────
+junit                             = { group = "junit",                 name = "junit",                   version.ref = "junit" }
+kotlinx-coroutines-test           = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+
+[plugins]
+android-application  = { id = "com.android.application",                   version.ref = "agp" }
+# NB: no kotlin-android alias — AGP 9 provides Kotlin. Adding it back breaks the build.
+kotlin-compose       = { id = "org.jetbrains.kotlin.plugin.compose",       version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+hilt                 = { id = "com.google.dagger.hilt.android",            version.ref = "hilt" }
+ksp                  = { id = "com.google.devtools.ksp",                   version.ref = "ksp" }
