@@ -92,7 +92,18 @@ dependencies {
     // ── Debug only ───────────────────────────────────────────────────────────
     debugImplementation(libs.androidx.compose.ui.tooling)
 
-    // ── Unit tests ───────────────────────────────────────────────────────────
+    // ── Unit tests (JVM, no device) ──────────────────────────────────────────
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+
+    // ── Instrumented tests (on device) ───────────────────────────────────────
+    // The AS template generates ExampleInstrumentedTest.kt in androidTest.
+    // Without these it does not compile, and while neither `assembleRelease`
+    // nor `testDebugUnitTest` touches that source set, a full Build does — so
+    // the breakage only appears when building the APK from the IDE.
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

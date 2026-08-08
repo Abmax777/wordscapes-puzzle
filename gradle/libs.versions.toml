@@ -37,6 +37,8 @@ lifecycle               = "2.8.7"
 coroutines              = "1.9.0"
 serialization-json      = "1.7.3"
 junit                   = "4.13.2"
+androidx-test-junit     = "1.2.1"
+espresso                = "3.6.1"
 
 [libraries]
 # ── Compose ──────────────────────────────────────────────────────────────────
@@ -73,9 +75,15 @@ kotlinx-coroutines-android        = { group = "org.jetbrains.kotlinx", name = "k
 # ── Serialization (level JSON + type-safe nav routes) ────────────────────────
 kotlinx-serialization-json        = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization-json" }
 
-# ── Testing ──────────────────────────────────────────────────────────────────
+# ── Unit tests (JVM) ─────────────────────────────────────────────────────────
 junit                             = { group = "junit",                 name = "junit",                   version.ref = "junit" }
 kotlinx-coroutines-test           = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+
+# ── Instrumented tests (device) ──────────────────────────────────────────────
+androidx-test-ext-junit           = { group = "androidx.test.ext",       name = "junit",          version.ref = "androidx-test-junit" }
+androidx-test-espresso-core       = { group = "androidx.test.espresso",  name = "espresso-core",  version.ref = "espresso" }
+androidx-compose-ui-test-junit4   = { group = "androidx.compose.ui",     name = "ui-test-junit4" }
+androidx-compose-ui-test-manifest = { group = "androidx.compose.ui",     name = "ui-test-manifest" }
 
 [plugins]
 android-application  = { id = "com.android.application",                   version.ref = "agp" }
