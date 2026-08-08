@@ -1,5 +1,7 @@
 package com.wordscapes.puzzle.ui.game.wheel
 
+import com.wordscapes.puzzle.domain.model.GameRules
+
 /**
  * The selection state machine for the letter wheel, as pure functions.
  *
@@ -37,14 +39,18 @@ object WheelSelection {
      * Returns [current] unchanged when the entry is a no-op, so callers can
      * cheaply detect "nothing happened" by reference equality.
      */
-    fun apply(current: List<Int>, entered: Int): List<Int> = when {
+    fun apply(
+        current: List<Int>,
+        entered: Int,
+        allowBacktrack: Boolean = true,
+    ): List<Int> = when {
         current.isEmpty() -> listOf(entered)
 
         // Still inside the letter we are already on — extremely common, no-op.
         entered == current.last() -> current
 
         // Retracing onto the previous letter — undo one step.
-        current.size >= 2 && entered == current[current.size - 2] ->
+        allowBacktrack && current.size >= 2 && entered == current[current.size - 2] ->
             current.subList(0, current.size - 1).toList()
 
         // Already used elsewhere in the word — cannot reuse.
@@ -66,8 +72,26 @@ object WheelSelection {
      * letters produces a path like [3, 1], which pops twice — the same result
      * as two slow retrace steps.
      */
-    fun applyPath(current: List<Int>, path: List<Int>): List<Int> =
-        path.fold(current) { acc, index -> apply(acc, index) }
+    fun applyPath(
+        current: List<Int>,
+        path: List<Int>,
+        pointerIndex: Int,
+    ): List<Int> = path.fold(current) { acc, index ->
+        // Backtrack is permitted ONLY for the letter the finger is actually
+        // inside right now, never for one merely swept over mid-segment.
+        //
+        // This is not a tuning detail, it is a correctness rule. On a five
+        // letter wheel the hop from A to C spans 144 degrees and R sits
+        // between them; the straight chord clears R's hit circle by about 2%,
+        // and nobody swipes straight chords — fingers arc along the rim, so
+        // the path goes through R. R being the second-to-last selection, the
+        // old rule read that as a retrace and popped A. R-A-C-E silently
+        // became R-C-E.
+        //
+        // Backtracking is deliberate: the finger comes to rest on the previous
+        // letter. Segment crossings are just the ground the finger covered.
+        apply(acc, index, allowBacktrack = index == pointerIndex)
+    }
 
     /**
      * The word spelled by [selection], or the empty string.
@@ -87,7 +111,7 @@ object WheelSelection {
     }
 
     /** Minimum letters before a selection is worth submitting. */
-    const val MIN_WORD_LENGTH = 3
+    const val MIN_WORD_LENGTH = GameRules.MIN_WORD_LENGTH
 
     /**
      * Whether [selection] is long enough to submit.

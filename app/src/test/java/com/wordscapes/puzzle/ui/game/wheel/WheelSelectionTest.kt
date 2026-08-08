@@ -115,7 +115,7 @@ class WheelSelectionTest {
         // One pointer event whose segment crossed three letters.
         assertEquals(
             listOf(0, 1, 2, 3),
-            WheelSelection.applyPath(listOf(0), listOf(1, 2, 3)),
+            WheelSelection.applyPath(listOf(0), listOf(1, 2, 3), pointerIndex = 3),
         )
     }
 
@@ -123,7 +123,7 @@ class WheelSelectionTest {
     fun `taking only the last letter of a path would lose letters`() {
         // Guards the subtle version of the skipped-letter bug: detected but
         // never appended.
-        val folded = WheelSelection.applyPath(listOf(0), listOf(1, 2, 3))
+        val folded = WheelSelection.applyPath(listOf(0), listOf(1, 2, 3), pointerIndex = 3)
         val lastOnly = WheelSelection.apply(listOf(0), 3)
         assertEquals(listOf(0, 1, 2, 3), folded)
         assertEquals(listOf(0, 3), lastOnly)
@@ -131,31 +131,69 @@ class WheelSelectionTest {
     }
 
     @Test
-    fun `a fast backtrack across two letters pops twice`() {
+    fun `a retrace onto the previous letter pops one`() {
+        // Finger comes to rest inside letter 2, the second-to-last.
         assertEquals(
-            listOf(0, 1),
-            WheelSelection.applyPath(listOf(0, 1, 2, 3), listOf(2, 1)),
+            listOf(0, 1, 2),
+            WheelSelection.applyPath(listOf(0, 1, 2, 3), listOf(2), pointerIndex = 2),
         )
+    }
+
+    /**
+     * KNOWN LIMITATION, deliberate. A flick backwards across two letters in a
+     * single pointer sample pops at most one, because only the letter under
+     * the finger may backtrack. Retracing is a slow gesture in practice, and
+     * the alternative — letting swept-over letters undo — is precisely the bug
+     * this rule exists to prevent. Degrades gracefully: keep dragging and the
+     * next sample pops the next letter.
+     */
+    @Test
+    fun `a two letter backtrack flick pops only the letter under the finger`() {
+        assertEquals(
+            listOf(0, 1, 2),
+            WheelSelection.applyPath(listOf(0, 1, 2, 3), listOf(2, 1), pointerIndex = 1),
+        )
+    }
+
+    /**
+     * Regression for the RACE bug found on device.
+     *
+     * Wheel CSEAR, indices C=0 S=1 E=2 A=3 R=4. Swiping R -> A -> C, the hop
+     * from A to C spans 144 degrees with R sitting between them, so the finger
+     * sweeps back through R. R being the second-to-last selection, the old
+     * rule read that as a retrace and popped A: R-A-C-E silently became R-C-E,
+     * which reported "not a word".
+     */
+    @Test
+    fun `a letter swept over mid-segment never undoes the selection`() {
+        val afterRA = listOf(4, 3)
+        // Segment A -> C reports R first (t=0.5), then C (t=1.0). Finger is in C.
+        val afterC = WheelSelection.applyPath(afterRA, listOf(4, 0), pointerIndex = 0)
+        assertEquals("R must not pop A when merely swept over", listOf(4, 3, 0), afterC)
+
+        val afterE = WheelSelection.applyPath(afterC, listOf(2), pointerIndex = 2)
+        assertEquals(listOf(4, 3, 0, 2), afterE)
+        assertEquals("RACE", WheelSelection.wordOf(afterE, listOf('C', 'S', 'E', 'A', 'R')))
     }
 
     @Test
     fun `an empty path changes nothing`() {
         val s = listOf(0, 1)
-        assertSame(s, WheelSelection.applyPath(s, emptyList()))
+        assertSame(s, WheelSelection.applyPath(s, emptyList(), pointerIndex = -1))
     }
 
     @Test
     fun `a path starting from nothing builds a whole word`() {
         assertEquals(
             listOf(4, 2, 0),
-            WheelSelection.applyPath(emptyList(), listOf(4, 2, 0)),
+            WheelSelection.applyPath(emptyList(), listOf(4, 2, 0), pointerIndex = 0),
         )
     }
 
     @Test
     fun `a path repeating the current letter is a no-op`() {
         val s = listOf(0, 1)
-        assertEquals(s, WheelSelection.applyPath(s, listOf(1, 1, 1)))
+        assertEquals(s, WheelSelection.applyPath(s, listOf(1, 1, 1), pointerIndex = 1))
     }
 
     // ── Word assembly ────────────────────────────────────────────────────────
@@ -192,7 +230,7 @@ class WheelSelectionTest {
     fun `short selections are still built normally during the drag`() {
         // The threshold gates submission only. A two-letter selection must
         // still exist and still draw; blocking it feels broken.
-        val s = WheelSelection.applyPath(emptyList(), listOf(0, 1))
+        val s = WheelSelection.applyPath(emptyList(), listOf(0, 1), pointerIndex = 1)
         assertEquals(listOf(0, 1), s)
         assertEquals("ST", WheelSelection.wordOf(s, letters))
     }

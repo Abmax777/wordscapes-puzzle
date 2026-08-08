@@ -2,6 +2,7 @@ package com.wordscapes.puzzle.data.dictionary
 
 import android.content.Context
 import com.wordscapes.puzzle.di.IoDispatcher
+import com.wordscapes.puzzle.domain.repository.WordLookup
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.sync.Mutex
@@ -25,7 +26,7 @@ import javax.inject.Singleton
 class DictionarySource @Inject constructor(
     @ApplicationContext private val context: Context,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-) {
+) : WordLookup {
     private val mutex = Mutex()
 
     @Volatile
@@ -39,7 +40,7 @@ class DictionarySource @Inject constructor(
     }
 
     /** True if [word] is a real word. Case-insensitive; does not check the wheel. */
-    suspend fun contains(word: String): Boolean =
+    override suspend fun contains(word: String): Boolean =
         words().contains(word.uppercase())
 
     private suspend fun load(): Set<String> = withContext(ioDispatcher) {

@@ -5,71 +5,58 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import com.wordscapes.puzzle.ui.game.wheel.WheelSandboxScreen
+import com.wordscapes.puzzle.ui.game.GameScreen
 import com.wordscapes.puzzle.ui.home.HomeScreen
+import com.wordscapes.puzzle.ui.levelselect.LevelSelectScreen
 
 private const val TRANSITION_MS = 300
 
 /**
  * Root navigation host.
  *
- * Design decisions captured here:
+ * All back-stack policy lives here rather than inside screens, so there is one
+ * place to reason about what Back does at every node.
  *
- * - Pause is a dialog destination (not a screen), so it sits inside the Game
- *   composable and back just dismisses the dialog without popping the Game
- *   entry. Wired on Day 5.
- *
- * - Auto-advance on level completion uses navController.navigate(Game(nextId))
- *   { popUpTo(Game(currentId)) { inclusive = true } } so the back stack never
- *   accumulates duplicate Game entries. Wired on Day 4.
- *
- * - Every ViewModel is scoped to its backstack entry via hiltViewModel() with
- *   no explicit ViewModelStoreOwner override, which is the correct default.
+ * The auto-advance rule is the one worth reading. On completing a level the
+ * app navigates to the next Game destination while popping the current one
+ * inclusively — replacing rather than pushing. Pushing would stack a Game
+ * entry per level completed, so a player who finished five levels and pressed
+ * Back would walk backwards through all five, each already solved.
  */
 @Composable
 fun WordscapesNavGraph(
     navController: NavHostController = rememberNavController(),
 ) {
     NavHost(
-        navController    = navController,
+        navController = navController,
         startDestination = Destination.Home,
-        // Forward navigation: new screen slides in from the right
         enterTransition = {
             slideInHorizontally(
-                initialOffsetX = { fullWidth -> fullWidth },
-                animationSpec  = tween(TRANSITION_MS),
+                initialOffsetX = { it },
+                animationSpec = tween(TRANSITION_MS),
             ) + fadeIn(animationSpec = tween(TRANSITION_MS))
         },
-        // Forward exit: old screen slides out to the left (at one-third speed
-        // so the incoming screen has room to establish itself)
         exitTransition = {
             slideOutHorizontally(
-                targetOffsetX = { fullWidth -> -fullWidth / 3 },
+                targetOffsetX = { -it / 3 },
                 animationSpec = tween(TRANSITION_MS),
             ) + fadeOut(animationSpec = tween(TRANSITION_MS))
         },
-        // Back navigation: returning screen slides in from the left
         popEnterTransition = {
             slideInHorizontally(
-                initialOffsetX = { fullWidth -> -fullWidth / 3 },
-                animationSpec  = tween(TRANSITION_MS),
+                initialOffsetX = { -it / 3 },
+                animationSpec = tween(TRANSITION_MS),
             ) + fadeIn(animationSpec = tween(TRANSITION_MS))
         },
-        // Back exit: current screen slides out to the right
         popExitTransition = {
             slideOutHorizontally(
-                targetOffsetX = { fullWidth -> fullWidth },
+                targetOffsetX = { it },
                 animationSpec = tween(TRANSITION_MS),
             ) + fadeOut(animationSpec = tween(TRANSITION_MS))
         },
@@ -77,28 +64,34 @@ fun WordscapesNavGraph(
         composable<Destination.Home> {
             HomeScreen(
                 onPlayClicked = { navController.navigate(Destination.LevelSelect) },
-                onSandboxClicked = { navController.navigate(Destination.WheelSandbox) },
             )
         }
 
-        // ── DEV ONLY: remove before submitting (Day 6 cleanup) ──────────────
-        composable<Destination.WheelSandbox> {
-            WheelSandboxScreen()
-        }
-
-        // ── Day 1: replace placeholder with LevelSelectScreen + LevelSelectViewModel
         composable<Destination.LevelSelect> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Level Select · wired Day 1")
-            }
+            LevelSelectScreen(
+                onLevelClicked = { id -> navController.navigate(Destination.Game(id)) },
+                onBack = { navController.popBackStack() },
+            )
         }
 
-        // ── Day 4: replace placeholder with GameScreen + GameViewModel
         composable<Destination.Game> { backStackEntry ->
-            val dest: Destination.Game = backStackEntry.toRoute()
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Level ${dest.levelId} · wired Day 4")
-            }
+            val destination: Destination.Game = backStackEntry.toRoute()
+            GameScreen(
+                onBack = { navController.popBackStack() },
+                onAdvanceToLevel = { nextId ->
+                    navController.navigate(Destination.Game(nextId)) {
+                        // Replace, do not push. See the class comment: pushing
+                        // accumulates one Game entry per level completed.
+                        popUpTo(destination) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                onFinishedFinalLevel = {
+                    // Final level done — return to the level list rather than
+                    // leaving the player on a completed board with no exit.
+                    navController.popBackStack(Destination.LevelSelect, inclusive = false)
+                },
+            )
         }
     }
 }

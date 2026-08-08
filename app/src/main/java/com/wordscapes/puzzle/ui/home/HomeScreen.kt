@@ -19,7 +19,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,7 +36,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.wordscapes.puzzle.BuildConfig
 import com.wordscapes.puzzle.ui.theme.SkyBottom
 import com.wordscapes.puzzle.ui.theme.SkyTop
 import com.wordscapes.puzzle.ui.theme.WordscapesTheme
@@ -65,7 +63,6 @@ import kotlinx.coroutines.delay
 @Composable
 fun HomeScreen(
     onPlayClicked: () -> Unit,
-    onSandboxClicked: () -> Unit = {},
 ) {
     var entered by remember { mutableStateOf(false) }
 
@@ -150,17 +147,6 @@ fun HomeScreen(
                 )
             }
 
-            // ── DEV ONLY: remove before submitting (Day 6 cleanup) ──────────
-            if (BuildConfig.DEBUG) {
-                Spacer(Modifier.height(20.dp))
-                TextButton(onClick = onSandboxClicked) {
-                    Text(
-                        text  = "wheel sandbox",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White.copy(alpha = 0.5f),
-                    )
-                }
-            }
         }
     }
 }
