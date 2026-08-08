@@ -1,0 +1,835 @@
+{
+  "levels": [
+    {
+      "id": 1,
+      "letters": [
+        "S",
+        "I",
+        "T",
+        "A",
+        "R"
+      ],
+      "gridWidth": 8,
+      "gridHeight": 7,
+      "words": [
+        {
+          "word": "SARI",
+          "row": 0,
+          "col": 4,
+          "horizontal": true
+        },
+        {
+          "word": "RATS",
+          "row": 0,
+          "col": 6,
+          "horizontal": false
+        },
+        {
+          "word": "STAIR",
+          "row": 2,
+          "col": 0,
+          "horizontal": false
+        },
+        {
+          "word": "SITAR",
+          "row": 2,
+          "col": 2,
+          "horizontal": false
+        },
+        {
+          "word": "AIRS",
+          "row": 2,
+          "col": 4,
+          "horizontal": false
+        },
+        {
+          "word": "ARTS",
+          "row": 2,
+          "col": 4,
+          "horizontal": true
+        },
+        {
+          "word": "ASTIR",
+          "row": 4,
+          "col": 0,
+          "horizontal": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "letters": [
+        "E",
+        "S",
+        "A",
+        "T",
+        "P"
+      ],
+      "gridWidth": 8,
+      "gridHeight": 7,
+      "words": [
+        {
+          "word": "PASTE",
+          "row": 0,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "PATES",
+          "row": 0,
+          "col": 0,
+          "horizontal": false
+        },
+        {
+          "word": "TAPES",
+          "row": 2,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "SPATE",
+          "row": 2,
+          "col": 4,
+          "horizontal": false
+        },
+        {
+          "word": "PAST",
+          "row": 3,
+          "col": 4,
+          "horizontal": true
+        },
+        {
+          "word": "SEPTA",
+          "row": 4,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "APES",
+          "row": 6,
+          "col": 2,
+          "horizontal": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "letters": [
+        "W",
+        "B",
+        "O",
+        "E",
+        "L"
+      ],
+      "gridWidth": 7,
+      "gridHeight": 8,
+      "words": [
+        {
+          "word": "LOBE",
+          "row": 0,
+          "col": 0,
+          "horizontal": false
+        },
+        {
+          "word": "BOWEL",
+          "row": 0,
+          "col": 3,
+          "horizontal": false
+        },
+        {
+          "word": "BLEW",
+          "row": 0,
+          "col": 3,
+          "horizontal": true
+        },
+        {
+          "word": "ELBOW",
+          "row": 0,
+          "col": 5,
+          "horizontal": false
+        },
+        {
+          "word": "BLOW",
+          "row": 2,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "BELOW",
+          "row": 4,
+          "col": 1,
+          "horizontal": true
+        },
+        {
+          "word": "BOLE",
+          "row": 4,
+          "col": 1,
+          "horizontal": false
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "letters": [
+        "I",
+        "E",
+        "D",
+        "M",
+        "L"
+      ],
+      "gridWidth": 7,
+      "gridHeight": 7,
+      "words": [
+        {
+          "word": "DIME",
+          "row": 0,
+          "col": 3,
+          "horizontal": false
+        },
+        {
+          "word": "DELI",
+          "row": 0,
+          "col": 5,
+          "horizontal": false
+        },
+        {
+          "word": "LIMED",
+          "row": 1,
+          "col": 2,
+          "horizontal": true
+        },
+        {
+          "word": "LIED",
+          "row": 2,
+          "col": 0,
+          "horizontal": false
+        },
+        {
+          "word": "IDLE",
+          "row": 3,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "LIME",
+          "row": 3,
+          "col": 2,
+          "horizontal": false
+        },
+        {
+          "word": "MELD",
+          "row": 6,
+          "col": 1,
+          "horizontal": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "letters": [
+        "R",
+        "P",
+        "E",
+        "I",
+        "M"
+      ],
+      "gridWidth": 8,
+      "gridHeight": 7,
+      "words": [
+        {
+          "word": "MIRE",
+          "row": 0,
+          "col": 7,
+          "horizontal": false
+        },
+        {
+          "word": "RIME",
+          "row": 1,
+          "col": 2,
+          "horizontal": true
+        },
+        {
+          "word": "EMIR",
+          "row": 1,
+          "col": 5,
+          "horizontal": false
+        },
+        {
+          "word": "PRIM",
+          "row": 3,
+          "col": 1,
+          "horizontal": false
+        },
+        {
+          "word": "PRIME",
+          "row": 3,
+          "col": 3,
+          "horizontal": true
+        },
+        {
+          "word": "PERM",
+          "row": 3,
+          "col": 3,
+          "horizontal": false
+        },
+        {
+          "word": "PIER",
+          "row": 5,
+          "col": 0,
+          "horizontal": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "letters": [
+        "T",
+        "S",
+        "H",
+        "U",
+        "E",
+        "C"
+      ],
+      "gridWidth": 8,
+      "gridHeight": 8,
+      "words": [
+        {
+          "word": "ETCH",
+          "row": 0,
+          "col": 4,
+          "horizontal": true
+        },
+        {
+          "word": "CUES",
+          "row": 0,
+          "col": 6,
+          "horizontal": false
+        },
+        {
+          "word": "CHEST",
+          "row": 1,
+          "col": 3,
+          "horizontal": false
+        },
+        {
+          "word": "CHUTE",
+          "row": 2,
+          "col": 2,
+          "horizontal": true
+        },
+        {
+          "word": "TECHS",
+          "row": 3,
+          "col": 0,
+          "horizontal": false
+        },
+        {
+          "word": "CHUTES",
+          "row": 5,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "SECT",
+          "row": 7,
+          "col": 0,
+          "horizontal": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "letters": [
+        "H",
+        "E",
+        "C",
+        "R",
+        "A",
+        "S"
+      ],
+      "gridWidth": 8,
+      "gridHeight": 8,
+      "words": [
+        {
+          "word": "REACH",
+          "row": 0,
+          "col": 3,
+          "horizontal": true
+        },
+        {
+          "word": "CHASE",
+          "row": 0,
+          "col": 6,
+          "horizontal": false
+        },
+        {
+          "word": "CHASER",
+          "row": 2,
+          "col": 4,
+          "horizontal": false
+        },
+        {
+          "word": "ARCHES",
+          "row": 3,
+          "col": 1,
+          "horizontal": true
+        },
+        {
+          "word": "ACHES",
+          "row": 3,
+          "col": 1,
+          "horizontal": false
+        },
+        {
+          "word": "CHARS",
+          "row": 5,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "SEARCH",
+          "row": 7,
+          "col": 1,
+          "horizontal": true
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "letters": [
+        "S",
+        "S",
+        "E",
+        "O",
+        "L",
+        "O"
+      ],
+      "gridWidth": 8,
+      "gridHeight": 7,
+      "words": [
+        {
+          "word": "OLEO",
+          "row": 0,
+          "col": 4,
+          "horizontal": true
+        },
+        {
+          "word": "LOSES",
+          "row": 0,
+          "col": 5,
+          "horizontal": false
+        },
+        {
+          "word": "SOLOS",
+          "row": 1,
+          "col": 0,
+          "horizontal": false
+        },
+        {
+          "word": "LOOSE",
+          "row": 1,
+          "col": 3,
+          "horizontal": false
+        },
+        {
+          "word": "LOOSES",
+          "row": 2,
+          "col": 2,
+          "horizontal": true
+        },
+        {
+          "word": "SLOES",
+          "row": 2,
+          "col": 7,
+          "horizontal": false
+        },
+        {
+          "word": "SOLES",
+          "row": 5,
+          "col": 0,
+          "horizontal": true
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "letters": [
+        "U",
+        "E",
+        "Q",
+        "P",
+        "I",
+        "S"
+      ],
+      "gridWidth": 8,
+      "gridHeight": 6,
+      "words": [
+        {
+          "word": "PIQUES",
+          "row": 0,
+          "col": 1,
+          "horizontal": false
+        },
+        {
+          "word": "QUIPS",
+          "row": 0,
+          "col": 6,
+          "horizontal": false
+        },
+        {
+          "word": "PIQUE",
+          "row": 1,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "EQUIP",
+          "row": 1,
+          "col": 4,
+          "horizontal": false
+        },
+        {
+          "word": "QUIP",
+          "row": 2,
+          "col": 4,
+          "horizontal": true
+        },
+        {
+          "word": "EQUIPS",
+          "row": 4,
+          "col": 1,
+          "horizontal": true
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "letters": [
+        "L",
+        "N",
+        "A",
+        "M",
+        "T",
+        "E"
+      ],
+      "gridWidth": 8,
+      "gridHeight": 8,
+      "words": [
+        {
+          "word": "AMEN",
+          "row": 0,
+          "col": 3,
+          "horizontal": true
+        },
+        {
+          "word": "MANTLE",
+          "row": 0,
+          "col": 4,
+          "horizontal": false
+        },
+        {
+          "word": "MANTEL",
+          "row": 1,
+          "col": 1,
+          "horizontal": false
+        },
+        {
+          "word": "LAMENT",
+          "row": 2,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "METAL",
+          "row": 3,
+          "col": 7,
+          "horizontal": false
+        },
+        {
+          "word": "MEANT",
+          "row": 5,
+          "col": 3,
+          "horizontal": true
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "letters": [
+        "T",
+        "E",
+        "E",
+        "N",
+        "S",
+        "W",
+        "E"
+      ],
+      "gridWidth": 7,
+      "gridHeight": 8,
+      "words": [
+        {
+          "word": "EWES",
+          "row": 0,
+          "col": 0,
+          "horizontal": false
+        },
+        {
+          "word": "WEEST",
+          "row": 0,
+          "col": 2,
+          "horizontal": true
+        },
+        {
+          "word": "TEENS",
+          "row": 0,
+          "col": 6,
+          "horizontal": false
+        },
+        {
+          "word": "NEWEST",
+          "row": 2,
+          "col": 3,
+          "horizontal": false
+        },
+        {
+          "word": "SWEETEN",
+          "row": 3,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "SWEET",
+          "row": 5,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "NEWTS",
+          "row": 7,
+          "col": 0,
+          "horizontal": true
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "letters": [
+        "A",
+        "N",
+        "D",
+        "E",
+        "G",
+        "E",
+        "L"
+      ],
+      "gridWidth": 8,
+      "gridHeight": 8,
+      "words": [
+        {
+          "word": "LEDGE",
+          "row": 0,
+          "col": 3,
+          "horizontal": true
+        },
+        {
+          "word": "GLADE",
+          "row": 0,
+          "col": 6,
+          "horizontal": false
+        },
+        {
+          "word": "GLEAN",
+          "row": 1,
+          "col": 2,
+          "horizontal": false
+        },
+        {
+          "word": "ANGLED",
+          "row": 2,
+          "col": 4,
+          "horizontal": false
+        },
+        {
+          "word": "GLEANED",
+          "row": 3,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "DANGLE",
+          "row": 5,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "LEADEN",
+          "row": 7,
+          "col": 1,
+          "horizontal": true
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "letters": [
+        "I",
+        "S",
+        "D",
+        "M",
+        "L",
+        "M",
+        "E"
+      ],
+      "gridWidth": 8,
+      "gridHeight": 8,
+      "words": [
+        {
+          "word": "MISLED",
+          "row": 0,
+          "col": 6,
+          "horizontal": false
+        },
+        {
+          "word": "DELIS",
+          "row": 1,
+          "col": 3,
+          "horizontal": true
+        },
+        {
+          "word": "SMILED",
+          "row": 2,
+          "col": 1,
+          "horizontal": false
+        },
+        {
+          "word": "DIMES",
+          "row": 3,
+          "col": 4,
+          "horizontal": false
+        },
+        {
+          "word": "SLIMMED",
+          "row": 5,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "DEISM",
+          "row": 7,
+          "col": 1,
+          "horizontal": true
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "letters": [
+        "M",
+        "L",
+        "A",
+        "P",
+        "Y",
+        "I",
+        "F"
+      ],
+      "gridWidth": 7,
+      "gridHeight": 7,
+      "words": [
+        {
+          "word": "PALMY",
+          "row": 0,
+          "col": 0,
+          "horizontal": false
+        },
+        {
+          "word": "AMPLIFY",
+          "row": 1,
+          "col": 0,
+          "horizontal": true
+        },
+        {
+          "word": "FAMILY",
+          "row": 1,
+          "col": 5,
+          "horizontal": false
+        },
+        {
+          "word": "FILMY",
+          "row": 3,
+          "col": 2,
+          "horizontal": true
+        },
+        {
+          "word": "FILM",
+          "row": 3,
+          "col": 2,
+          "horizontal": false
+        },
+        {
+          "word": "AMPLY",
+          "row": 6,
+          "col": 1,
+          "horizontal": true
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "letters": [
+        "O",
+        "M",
+        "E",
+        "O",
+        "F",
+        "T",
+        "N"
+      ],
+      "gridWidth": 8,
+      "gridHeight": 8,
+      "words": [
+        {
+          "word": "FONT",
+          "row": 0,
+          "col": 3,
+          "horizontal": true
+        },
+        {
+          "word": "OFTEN",
+          "row": 0,
+          "col": 4,
+          "horizontal": false
+        },
+        {
+          "word": "FOMENT",
+          "row": 1,
+          "col": 2,
+          "horizontal": false
+        },
+        {
+          "word": "FOOTMEN",
+          "row": 2,
+          "col": 1,
+          "horizontal": true
+        },
+        {
+          "word": "NOTE",
+          "row": 4,
+          "col": 4,
+          "horizontal": true
+        },
+        {
+          "word": "OMEN",
+          "row": 4,
+          "col": 5,
+          "horizontal": false
+        },
+        {
+          "word": "MONO",
+          "row": 5,
+          "col": 0,
+          "horizontal": true
+        }
+      ]
+    }
+  ]
+}
