@@ -49,6 +49,9 @@ android {
 
     buildFeatures {
         compose = true
+        // Off by default since AGP 8.0. Needed so debug-only affordances
+        // (the wheel sandbox entry point) can be compiled out of release.
+        buildConfig = true
     }
 }
 

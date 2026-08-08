@@ -19,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.wordscapes.puzzle.BuildConfig
 import com.wordscapes.puzzle.ui.theme.SkyBottom
 import com.wordscapes.puzzle.ui.theme.SkyTop
 import com.wordscapes.puzzle.ui.theme.WordscapesTheme
@@ -63,6 +65,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun HomeScreen(
     onPlayClicked: () -> Unit,
+    onSandboxClicked: () -> Unit = {},
 ) {
     var entered by remember { mutableStateOf(false) }
 
@@ -95,18 +98,24 @@ fun HomeScreen(
             modifier = Modifier
                 .alpha(alpha)
                 .scale(scale)
-                .padding(horizontal = 40.dp),
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
+            // 48sp with 4sp tracking overflows a 360dp screen and wraps to
+            // "WORDSCAPE / S". maxLines pins the single-line intent; the size
+            // and tracking are dialled back until it fits with margin to
+            // spare, including at raised system font scales.
             Text(
                 text      = "WORDSCAPES",
                 style     = MaterialTheme.typography.displayLarge.copy(
                     fontWeight    = FontWeight.Black,
-                    letterSpacing = 4.sp,
+                    fontSize      = 38.sp,
+                    letterSpacing = 2.sp,
                 ),
                 color     = Color.White,
                 textAlign = TextAlign.Center,
+                maxLines  = 1,
             )
 
             Spacer(Modifier.height(12.dp))
@@ -139,6 +148,18 @@ fun HomeScreen(
                         letterSpacing = 3.sp,
                     ),
                 )
+            }
+
+            // ── DEV ONLY: remove before submitting (Day 6 cleanup) ──────────
+            if (BuildConfig.DEBUG) {
+                Spacer(Modifier.height(20.dp))
+                TextButton(onClick = onSandboxClicked) {
+                    Text(
+                        text  = "wheel sandbox",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.5f),
+                    )
+                }
             }
         }
     }

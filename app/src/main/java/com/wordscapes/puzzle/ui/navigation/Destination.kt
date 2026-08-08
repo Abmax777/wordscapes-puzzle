@@ -31,4 +31,13 @@ sealed interface Destination {
      */
     @Serializable
     data class Game(val levelId: Int) : Destination
+
+    /**
+     * Development-only sandbox for building the letter wheel in isolation.
+     *
+     * REMOVE before submitting, along with its NavGraph entry and the Home
+     * screen button that reaches it. Day 6 cleanup item.
+     */
+    @Serializable
+    data object WheelSandbox : Destination
 }

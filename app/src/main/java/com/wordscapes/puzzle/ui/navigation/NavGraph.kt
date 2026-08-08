@@ -16,6 +16,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.wordscapes.puzzle.ui.game.wheel.WheelSandboxScreen
 import com.wordscapes.puzzle.ui.home.HomeScreen
 
 private const val TRANSITION_MS = 300
@@ -76,7 +77,13 @@ fun WordscapesNavGraph(
         composable<Destination.Home> {
             HomeScreen(
                 onPlayClicked = { navController.navigate(Destination.LevelSelect) },
+                onSandboxClicked = { navController.navigate(Destination.WheelSandbox) },
             )
+        }
+
+        // ── DEV ONLY: remove before submitting (Day 6 cleanup) ──────────────
+        composable<Destination.WheelSandbox> {
+            WheelSandboxScreen()
         }
 
         // ── Day 1: replace placeholder with LevelSelectScreen + LevelSelectViewModel
