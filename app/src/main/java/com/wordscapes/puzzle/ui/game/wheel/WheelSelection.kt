@@ -76,21 +76,31 @@ object WheelSelection {
         current: List<Int>,
         path: List<Int>,
         pointerIndex: Int,
-    ): List<Int> = path.fold(current) { acc, index ->
-        // Backtrack is permitted ONLY for the letter the finger is actually
-        // inside right now, never for one merely swept over mid-segment.
+    ): List<Int> {
+        // Is this gesture a retrace, or is it drawing forward?
         //
-        // This is not a tuning detail, it is a correctness rule. On a five
-        // letter wheel the hop from A to C spans 144 degrees and R sits
-        // between them; the straight chord clears R's hit circle by about 2%,
-        // and nobody swipes straight chords — fingers arc along the rim, so
-        // the path goes through R. R being the second-to-last selection, the
-        // old rule read that as a retrace and popped A. R-A-C-E silently
-        // became R-C-E.
+        // The discriminator is where the finger ENDS UP. Landing on a letter
+        // already in the selection means retracing back along the path just
+        // drawn; landing on a new letter (or on empty space) means heading
+        // somewhere else, and anything crossed on the way is incidental.
         //
-        // Backtracking is deliberate: the finger comes to rest on the previous
-        // letter. Segment crossings are just the ground the finger covered.
-        apply(acc, index, allowBacktrack = index == pointerIndex)
+        // This matters because of a bug found on device. On a five letter
+        // wheel the hop from A to C spans 144 degrees with R sitting between
+        // them, and the arc a finger actually draws passes through R's hit
+        // circle. R being the second-to-last selection, treating that crossing
+        // as a retrace popped A, so R-A-C-E silently became R-C-E.
+        //
+        // An earlier fix allowed backtracking only for the letter directly
+        // under the finger. That killed the bug but broke retracing: flicking
+        // back across two letters popped nothing at all, and did not recover
+        // on subsequent samples either. Deciding once per gesture handles both
+        // — a fast two letter retrace pops twice, and a forward arc through an
+        // old letter pops nothing.
+        val isRetracing = pointerIndex >= 0 && pointerIndex in current
+
+        return path.fold(current) { acc, index ->
+            apply(acc, index, allowBacktrack = isRetracing)
+        }
     }
 
     /**

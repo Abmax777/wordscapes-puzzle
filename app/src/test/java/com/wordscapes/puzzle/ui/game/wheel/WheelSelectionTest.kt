@@ -139,20 +139,46 @@ class WheelSelectionTest {
         )
     }
 
-    /**
-     * KNOWN LIMITATION, deliberate. A flick backwards across two letters in a
-     * single pointer sample pops at most one, because only the letter under
-     * the finger may backtrack. Retracing is a slow gesture in practice, and
-     * the alternative — letting swept-over letters undo — is precisely the bug
-     * this rule exists to prevent. Degrades gracefully: keep dragging and the
-     * next sample pops the next letter.
-     */
     @Test
-    fun `a two letter backtrack flick pops only the letter under the finger`() {
+    fun `a fast backtrack across two letters pops twice`() {
+        // Finger flicks from letter 3 back through 2 and lands in 1. Landing
+        // on an already-selected letter means this is a retrace, so both
+        // crossings undo.
         assertEquals(
-            listOf(0, 1, 2),
+            listOf(0, 1),
             WheelSelection.applyPath(listOf(0, 1, 2, 3), listOf(2, 1), pointerIndex = 1),
         )
+    }
+
+    @Test
+    fun `retracing is decided by where the finger lands, not what it crossed`() {
+        val current = listOf(0, 1, 2, 3)
+
+        // Lands on a selected letter -> retrace, crossings undo.
+        assertEquals(
+            listOf(0, 1),
+            WheelSelection.applyPath(current, listOf(2, 1), pointerIndex = 1),
+        )
+
+        // Same crossings, but lands on a NEW letter -> drawing forward, so the
+        // sweep over 2 and 1 is incidental and must not undo anything.
+        assertEquals(
+            listOf(0, 1, 2, 3, 4),
+            WheelSelection.applyPath(current, listOf(2, 1, 4), pointerIndex = 4),
+        )
+    }
+
+    /**
+     * KNOWN LIMITATION, minor and self-correcting. If a retracing finger is
+     * between letters when a sample lands (pointerIndex -1), that sample pops
+     * nothing, because there is no way to tell a retrace from a forward sweep
+     * without knowing where the finger came to rest. The next sample that
+     * lands inside a letter resolves it.
+     */
+    @Test
+    fun `a sample landing in dead space pops nothing`() {
+        val current = listOf(0, 1, 2, 3)
+        assertEquals(current, WheelSelection.applyPath(current, listOf(2), pointerIndex = -1))
     }
 
     /**
