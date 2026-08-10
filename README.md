@@ -69,6 +69,155 @@ whole class of bug where one flow has updated and another has not.
 
 ---
 
+## Walkthrough: launch to auto-advance
+
+Read this first if you are opening the repo cold. It follows one path all the
+way through — app start, into a level, one swipe, and out the other side.
+
+```mermaid
+flowchart LR
+    MA["MainActivity"] --> NG["WordscapesNavGraph"]
+    NG --> H["HomeScreen"]
+    H -- "PLAY" --> LS["LevelSelectScreen"]
+    H -- "Continue" --> G["GameScreen"]
+    LS -- "tap unlocked card" --> G
+    G -- "Pause" --> P["PauseDialog"]
+    P -- "Resume" --> G
+    G -- "level complete" --> G
+```
+
+Every arrow above is decided in **one file**, `ui/navigation/NavGraph.kt`.
+Screens report what happened through callbacks and never touch the
+`NavController`, so back-stack policy has a single home.
+
+### 1 · Launch
+
+| | |
+|---|---|
+| `WordscapesApplication` | `@HiltAndroidApp` — builds the DI graph |
+| `MainActivity.onCreate` | `enableEdgeToEdge()`, then `setContent { WordscapesTheme { WordscapesNavGraph() } }` |
+
+That is the entire Activity. Everything below is Compose.
+
+### 2 · Home
+
+`HomeScreen()` takes `HomeViewModel` via `hiltViewModel()`, reads state with
+`collectAsStateWithLifecycle()`, and hands rendering to the stateless
+`HomeContent()` — split so `@Preview` works.
+
+`HomeViewModel.init` collects `ProgressStore.progress` and derives
+`continueLevelId` from `GameProgress.nextPlayableLevelId()`.
+
+PLAY → `navigate(Destination.LevelSelect)`.
+
+### 3 · Level Select
+
+`LevelSelectViewModel.init` reads the ordered level ids **once** via
+`LevelCatalog.getLevels()`, then **collects** `ProgressStore.progress` for the
+ViewModel's lifetime, mapping each id to a `LevelCard(id, isUnlocked,
+isCompleted)`.
+
+Collecting rather than reading once is why finishing a level updates this list
+with no coupling between screens.
+
+Tap an unlocked card → `navigate(Destination.Game(id))`.
+
+### 4 · Entering a level
+
+`GameViewModel.init` launches two coroutines:
+
+1. **`loadLevel()`** — reads `levelId` from `SavedStateHandle`, calls
+   `LevelCatalog.getLevel()` and `nextLevelId()`, restores revealed and bonus
+   words via `restoredRevealed()` / `restoredBonus()`.
+2. **A consumer loop** draining the `submissions` channel.
+
+First call triggers the only real I/O:
+
+`LevelRepository.getLevels()` (mutex-guarded, cached for the process)
+→ `LevelJsonSource.loadLevels()` (reads `assets/levels.json`)
+→ `LevelMapper.toDomain()` — **this is where the grid is derived**, validating
+every placement and building `Level.cells`, throwing `LevelFormatException` on
+anything malformed.
+
+`GameScreen` then renders `CrosswordGrid`, `FeedbackBanner`, and `LetterWheel`.
+Gesture state lives in a `remember { WheelGestureState() }` — deliberately not
+in the ViewModel.
+
+### 5 · One swipe
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant F as Finger
+    participant LW as LetterWheel
+    participant WG as WheelGeometry
+    participant GS as WheelGestureState
+    participant WS as WheelSelection
+    F->>LW: down
+    LW->>WG: hitTestResting(pos)
+    LW->>GS: beginDrag(pos, index)
+    loop every pointer sample
+        F->>LW: move
+        LW->>WG: hitTestSegment(prev, pos)
+        LW->>WG: hitTestResting(pos)
+        LW->>GS: onMove(pos, crossed, resting)
+        GS->>WS: applyPath(...)
+        WS-->>GS: truncate, or append swept letters
+    end
+    F->>LW: up
+    LW->>GS: endDrag() clears selection FIRST
+    LW->>LW: submit() emits the word
+```
+
+Two geometry calls per sample, for two different questions. `hitTestSegment`
+uses the generous reach radius and answers *what did the path touch*.
+`hitTestResting` uses the strict radius and answers *what is the finger sitting
+on* — which is the only input to retrace.
+
+`selection` and `pointer` are `mutableStateOf` read inside
+`drawWithCache { onDrawBehind { } }`, so a move invalidates the draw phase only —
+no recomposition, no geometry recompute.
+
+### 6 · Validation
+
+`submitWord()` does nothing but `submissions.trySend(word)`. Non-blocking, so
+the wheel never waits on validation, and the buffer absorbs rapid swipes.
+
+The single consumer runs `handleSubmission()`:
+
+```
+ValidateWord(word, level, revealed, bonus)
+    length -> isSpellableFrom() -> grid match -> already found -> WordLookup
+    returns GridWord | BonusWord | AlreadyFound | Invalid
+```
+
+Then `_uiState.update { }` adds the revealed index or bonus word and bumps
+`submissionId`, and `persist()` writes both sets into `SavedStateHandle`.
+
+### 7 · Completion and auto-advance
+
+`handleSubmission` compares `before.isComplete` against the new value. On that
+**transition** — not on the state — it calls `ProgressStore.markCompleted()`,
+which reaches Level Select and Home through their collectors.
+
+`isComplete` flipping re-runs `LaunchedEffect` in `GameScreen`, which delays,
+then calls `onAdvanceToLevel(next)`, or `onFinishedFinalLevel()` when
+`nextLevelId` is null.
+
+`NavGraph` handles it:
+
+```kotlin
+navigate(Game(nextId)) {
+    popUpTo(destination) { inclusive = true }   // replace, do not push
+    launchSingleTop = true
+}
+```
+
+The new entry gets a fresh `GameViewModel` and a fresh `SavedStateHandle`, and
+the cycle restarts at step 4.
+
+---
+
 ## Swipe logic
 
 This is the most interesting part of the codebase, and the part with the
