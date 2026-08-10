@@ -80,13 +80,17 @@ class WheelGestureState {
     internal fun onMove(position: Offset, crossed: List<Int>, pointerIndex: Int) {
         pointer = position
         sampleCount++
-        if (crossed.isNotEmpty()) {
-            val next = WheelSelection.applyPath(selection, crossed, pointerIndex)
-            // Identity check: applyPath returns the same instance when nothing
-            // changed, so a finger resting inside a letter costs no snapshot
-            // write and therefore no redraw of the selection.
-            if (next !== selection) selection = next
-        }
+
+        // Called unconditionally, even when the segment swept nothing. A
+        // retrace is detected from where the finger is resting, not from what
+        // it crossed, so gating on a non-empty path would make truncation
+        // depend on a signal it does not use.
+        val next = WheelSelection.applyPath(selection, crossed, pointerIndex)
+
+        // Identity check: applyPath returns the same instance when nothing
+        // changed, so a finger resting inside a letter costs no snapshot write
+        // and therefore no redraw.
+        if (next !== selection) selection = next
     }
 
     /**

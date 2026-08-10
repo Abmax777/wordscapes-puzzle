@@ -116,6 +116,68 @@ class WheelGeometryTest {
         assertEquals(80f, g.hitRadius, 0.01f)
     }
 
+    @Test
+    fun `resting radius is tighter than the drawn circle`() {
+        for (n in 3..8) {
+            val g = geo(n)
+            assertTrue(
+                "resting must require being visibly on the letter at $n",
+                g.retraceRadius < g.letterRadius,
+            )
+            assertTrue(
+                "resting must be far tighter than the reach radius at $n",
+                g.retraceRadius < g.hitRadius / 1.5f,
+            )
+        }
+    }
+
+    @Test
+    fun `resting test matches at a letter centre`() {
+        val g = geo(5)
+        g.letterCenters.forEachIndexed { i, c ->
+            assertEquals(i, g.hitTestResting(c))
+        }
+    }
+
+    /**
+     * The asymmetry that fixes unintended retraces: a point between the drawn
+     * circle and the reach radius counts as reaching towards a letter, but not
+     * as resting on it.
+     */
+    @Test
+    fun `a point just outside the drawn circle reaches but does not rest`() {
+        val g = geo(5)
+        val c = g.letterCenters[0]
+        val justOutside = Offset(c.x + g.letterRadius * 1.15f, c.y)
+
+        assertEquals("should still be reachable", 0, g.hitTest(justOutside))
+        assertEquals("must not count as resting", -1, g.hitTestResting(justOutside))
+    }
+
+    @Test
+    fun `the wheel centre rests on nothing`() {
+        val g = geo(6)
+        assertEquals(-1, g.hitTestResting(g.center))
+    }
+
+    /**
+     * Drawn circles never overlap, so a resting radius at or below the drawn
+     * radius can never be ambiguous between two letters.
+     */
+    @Test
+    fun `resting can never match two letters`() {
+        for (n in 3..8) {
+            val g = geo(n)
+            val a = g.letterCenters[0]
+            val b = g.letterCenters[1]
+            val gap = hypot(a.x - b.x, a.y - b.y)
+            assertTrue(
+                "resting circles overlap at $n letters",
+                gap > 2f * g.retraceRadius,
+            )
+        }
+    }
+
     // ── Point hit testing ────────────────────────────────────────────────────
 
     @Test

@@ -15,7 +15,7 @@ fill a crossword grid. Kotlin, Jetpack Compose, single Activity, MVVM.
 
 ```bash
 ./gradlew :app:installDebug        # onto a connected device
-./gradlew :app:testDebugUnitTest   # 94 JVM unit tests, no device needed
+./gradlew :app:testDebugUnitTest   # 89 JVM unit tests, no device needed
 ```
 
 Requires JDK 17. Toolchain is pinned to AGP 9.2.1 / Gradle 9.4.1 — AGP 9.2 lists
@@ -86,7 +86,7 @@ Caching matters less for the cost than for **stability**: hit-test results must
 not shift under a finger mid-drag because a recomposition recalculated a radius
 slightly differently.
 
-### 2. Hit testing is generous, and resolves by nearest centre
+### 2. Two radii: generous to reach, strict to undo
 
 The touch target is **1.6× the drawn circle** (`HIT_RADIUS_MULTIPLIER`). A
 target matching the visual reads as unresponsive: a fingertip contact patch is
@@ -98,6 +98,15 @@ Because inflated radii overlap, `hitTest` returns the **nearest** centre rather
 than the first match. First-match would make results depend on list order, so a
 finger in the overlap between letters 2 and 3 would always resolve to 2 — which
 reads as the wheel favouring one side.
+
+There is a second, much tighter radius — `retraceRadius`, 0.85× the *drawn*
+circle — used only to decide whether the finger is **resting on** a letter.
+Adding a letter and undoing one are not symmetric operations: reaching should
+be forgiving, because a false negative merely fails to add something, whereas
+undoing should be deliberate, because a false positive destroys work already
+done. Sharing one radius caused a bug found on device, where drawing forward
+past an already-selected letter put the finger inside its generous hit circle
+without ever visibly touching it, and the word silently truncated.
 
 ### 3. Segment hit testing, not point sampling
 
@@ -138,12 +147,17 @@ swipes straight chords; fingers arc along the rim, and that arc passes through
 R. R being the second-to-last selection, the old rule read it as a retrace and
 popped A, so `R-A-C-E` silently became `R-C-E` and reported "not a word".
 
-The discriminator is the letter the finger ends up in, evaluated once per
-gesture. Landing on a letter already in the selection means retracing back
-along the path just drawn, so crossings undo. Landing on a new letter, or in
-empty space, means heading elsewhere and everything crossed on the way is
-incidental. A forward arc through an old letter now pops nothing, while a fast
-flick back across two letters correctly pops twice.
+Retracing is a statement about **position, not movement**: if the finger is
+resting on a letter earlier in the word, the word truncates to end there.
+Distance is irrelevant, so a slow one-letter retrace and a fast flick back
+across three behave identically. Otherwise the finger is drawing forward and
+swept letters are appended if new, ignored if not — nothing is ever undone.
+
+Resting inside the *last* letter counts as forward drawing, not retracing.
+That distinction fixed a second on-device bug where the word's second letter
+kept dropping: adjacent hit circles overlap, so the moment a thumb began
+leaving letter two the segment grazed letter one, and letter one was the
+trigger to undo.
 
 ### Submission ordering
 
@@ -262,11 +276,11 @@ five already-solved boards.
 
 ## Testing
 
-94 JVM unit tests, no device or Robolectric required:
+89 JVM unit tests, no device or Robolectric required:
 
 | Area | Tests | Covers |
 |---|---|---|
-| `WheelSelectionTest` | 26 | append/backtrack/ignore, path folding, the incidental-crossing regression |
+| `WheelSelectionTest` | 21 | append and retrace, path folding, two on-device regressions |
 | `WheelGeometryTest` | 22 | layout, spacing, hit radius, segment ordering, degenerate cases |
 | `LevelDataTest` | 16 | all 15 shipped levels + 6 negative cases proving validation rejects malformed input |
 | `GameViewModelTest` | 18 | loading, submissions, the rapid-duplicate race, saved-state round trip, completion recorded once |

@@ -115,7 +115,24 @@ fun LetterWheel(
                         val pointerId = down.id
                         down.consume()
 
-                        state.beginDrag(down.position, geometry.hitTest(down.position))
+                        // Resting radius on the initial press, not the
+                        // generous reach radius.
+                        //
+                        // A press is stationary and deliberate — the player is
+                        // aiming, and can be precise. A drag is neither, which
+                        // is what the generous radius exists for. Using the
+                        // reach radius here meant every point on the disc
+                        // resolved to some letter, since inflated hit circles
+                        // leave no gaps: you could not put a finger down
+                        // without committing to a letter.
+                        //
+                        // Costs nothing when the player is slightly off: the
+                        // first segment test of the drag sweeps the intended
+                        // letter with the generous radius and appends it.
+                        state.beginDrag(
+                            down.position,
+                            geometry.hitTestResting(down.position),
+                        )
                         var previous = down.position
                         var completed = false
 
@@ -144,7 +161,12 @@ fun LetterWheel(
                                     state.onMove(
                                         position = change.position,
                                         crossed = crossed,
-                                        pointerIndex = geometry.hitTest(change.position),
+                                        // Resting test, not the generous hit
+                                        // test: this index only ever drives
+                                        // retrace, and undoing must be
+                                        // deliberate.
+                                        pointerIndex =
+                                            geometry.hitTestResting(change.position),
                                     )
                                     previous = change.position
                                 }

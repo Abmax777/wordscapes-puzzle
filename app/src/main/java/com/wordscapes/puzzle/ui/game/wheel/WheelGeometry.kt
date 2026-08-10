@@ -34,6 +34,11 @@ data class WheelGeometry(
     val letterRadius: Float,
     /** Radius of each letter's touch target. Deliberately > [letterRadius]. */
     val hitRadius: Float,
+    /**
+     * Radius within which the finger counts as *resting on* a letter, as
+     * opposed to merely reaching towards it. Deliberately < [letterRadius].
+     */
+    val retraceRadius: Float,
     /** Letter centres, index-aligned with the level's letter list. */
     val letterCenters: List<Offset>,
 ) {
@@ -51,12 +56,35 @@ data class WheelGeometry(
      *
      * Returns -1 for no hit.
      */
-    fun hitTest(point: Offset): Int {
+    fun hitTest(point: Offset): Int = nearestWithin(point, hitRadius)
+
+    /**
+     * Which letter the finger is *resting on*, using the much tighter
+     * [retraceRadius]. Returns -1 unless the point is well inside a drawn
+     * circle.
+     *
+     * Two thresholds, because adding a letter and undoing one are not
+     * symmetric. Reaching towards a letter should be forgiving — the reported
+     * pointer often lands outside a contact patch the player thinks is dead
+     * centre. Undoing should require deliberateness, because a false positive
+     * there destroys work rather than merely failing to create it.
+     *
+     * Sharing one radius caused a bug on device: drawing forward past an
+     * already-selected letter put the finger inside that letter's generous hit
+     * circle without ever visibly touching it, which read as a retrace and
+     * silently truncated the word.
+     *
+     * Drawn circles never overlap (see the geometry tests), so a radius at or
+     * below [letterRadius] can match at most one letter — no ambiguity.
+     */
+    fun hitTestResting(point: Offset): Int = nearestWithin(point, retraceRadius)
+
+    private fun nearestWithin(point: Offset, radius: Float): Int {
         var best = -1
         var bestDistance = Float.MAX_VALUE
         for (i in letterCenters.indices) {
             val d = distance(letterCenters[i], point)
-            if (d <= hitRadius && d < bestDistance) {
+            if (d <= radius && d < bestDistance) {
                 bestDistance = d
                 best = i
             }
@@ -170,6 +198,15 @@ data class WheelGeometry(
         const val HIT_RADIUS_MULTIPLIER = 1.6f
 
         /**
+         * Resting radius as a fraction of the drawn circle.
+         *
+         * Below 1.0 by design: the finger must be visibly on the letter, not
+         * merely near it. Raise it and unintended retraces creep back; lower
+         * it and deliberate retracing starts to feel finicky.
+         */
+        const val RETRACE_RADIUS_FRACTION = 0.85f
+
+        /**
          * Absolute floor on the touch target, in pixels, passed in by the
          * caller after converting from dp. Android's minimum recommended touch
          * target is 48 dp across, so 24 dp of radius. At five big letters the
@@ -201,6 +238,7 @@ data class WheelGeometry(
                 discRadius * MAX_LETTER_RADIUS_FRACTION,
             )
             val hitRadius = maxOf(letterRadius * HIT_RADIUS_MULTIPLIER, minHitRadiusPx)
+            val retraceRadius = letterRadius * RETRACE_RADIUS_FRACTION
 
             // First letter at twelve o'clock, then clockwise. Screen y grows
             // downward, so the usual -PI/2 start angle puts index 0 at the top.
@@ -218,6 +256,7 @@ data class WheelGeometry(
                 orbitRadius = orbitRadius,
                 letterRadius = letterRadius,
                 hitRadius = hitRadius,
+                retraceRadius = retraceRadius,
                 letterCenters = centers,
             )
         }
