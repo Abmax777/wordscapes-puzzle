@@ -28,4 +28,20 @@ sealed interface Destination {
      */
     @Serializable
     data class Game(val levelId: Int) : Destination
+
+    /**
+     * Pause menu.
+     *
+     * Registered with `dialog<T>` rather than `composable<T>`, which is the
+     * whole point. A dialog destination sits ON TOP of the Game destination
+     * rather than replacing it: Game stays composed, its ViewModel and
+     * SavedStateHandle stay alive, and Back dismisses only the dialog. Built
+     * as a screen instead, Back would pop the player out of the level and
+     * pausing would cost them their board.
+     *
+     * [levelId] is carried so Restart can rebuild the same level without
+     * reaching across into the Game entry's ViewModel.
+     */
+    @Serializable
+    data class Pause(val levelId: Int) : Destination
 }

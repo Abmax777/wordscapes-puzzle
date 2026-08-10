@@ -69,6 +69,7 @@ private const val FEEDBACK_LINGER_MS = 1400L
 @Composable
 fun GameScreen(
     onBack: () -> Unit,
+    onPause: () -> Unit,
     onAdvanceToLevel: (Int) -> Unit,
     onFinishedFinalLevel: () -> Unit,
     viewModel: GameViewModel = hiltViewModel(),
@@ -136,8 +137,11 @@ fun GameScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        TextButton(onClick = onBack) {
-                            Text("Back", color = Color.White.copy(alpha = 0.85f))
+                        // Opens the pause dialog rather than popping the
+                        // level. System Back still pops, which is the correct
+                        // platform behaviour; this is the in-game affordance.
+                        TextButton(onClick = onPause) {
+                            Text("Pause", color = Color.White.copy(alpha = 0.85f))
                         }
                         Text(
                             text = "Level ${level.id}",

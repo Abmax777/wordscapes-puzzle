@@ -4,8 +4,8 @@ An Android word puzzle: swipe letters on a circular wheel to spell words and
 fill a crossword grid. Kotlin, Jetpack Compose, single Activity, MVVM.
 
 > **Status: in progress.** Gameplay is complete and playable end to end across
-> all 15 levels. Cross-session progress, the pause dialog and the
-> micro-interaction animation pass are not built yet. See
+> all 15 levels, with cross-session progress and a pause menu. The
+> micro-interaction animation pass is not built yet. See
 > [Known limitations](#known-limitations) — that section is deliberately honest
 > rather than aspirational.
 
@@ -15,7 +15,7 @@ fill a crossword grid. Kotlin, Jetpack Compose, single Activity, MVVM.
 
 ```bash
 ./gradlew :app:installDebug        # onto a connected device
-./gradlew :app:testDebugUnitTest   # 89 JVM unit tests, no device needed
+./gradlew :app:testDebugUnitTest   # 94 JVM unit tests, no device needed
 ```
 
 Requires JDK 17. Toolchain is pinned to AGP 9.2.1 / Gradle 9.4.1 — AGP 9.2 lists
@@ -37,15 +37,17 @@ ui/
   game/          GameScreen, GameViewModel, GameUiState
     wheel/       WheelGeometry, WheelSelection, WheelGestureState, LetterWheel
     grid/        CrosswordGrid
+  pause/         PauseDialog
   navigation/    Destination, NavGraph
   theme/         Color, Type, Theme
 domain/
-  model/         Level, PlacedWord, GridCell, WordResult, GameRules
-  repository/    LevelCatalog, WordLookup          (interfaces)
+  model/         Level, PlacedWord, GridCell, WordResult, GameRules, GameProgress
+  repository/    LevelCatalog, WordLookup, ProgressStore   (interfaces)
   usecase/       ValidateWord
 data/
   level/         LevelRepository, LevelJsonSource, LevelMapper, LevelDto
   dictionary/    DictionarySource
+  progress/      ProgressDataStore
 di/              AppModule, DispatcherModule, RepositoryModule
 tools/           level generator — build tooling, not part of the app
 ```
@@ -128,17 +130,20 @@ The third case covers two things that both must be no-ops: re-entering the
 stream of move events (appending each would spell `SSSSS`), and crossing back
 over the middle of your own trail, since a letter cannot be reused in a word.
 
-**Backtrack requires the finger to be inside the letter.** This rule exists
-because of a bug found in ordinary play. On a five-letter wheel `C S E A R`,
+**Whether a gesture is a retrace is decided by where the finger lands.** This
+rule exists because of a bug found in ordinary play. On a five-letter wheel `C S E A R`,
 swiping R → A → C means the hop from A to C spans 144° — and R sits directly
 between them. A straight chord clears R's hit circle by about 2%, but nobody
 swipes straight chords; fingers arc along the rim, and that arc passes through
 R. R being the second-to-last selection, the old rule read it as a retrace and
 popped A, so `R-A-C-E` silently became `R-C-E` and reported "not a word".
 
-Letters swept over mid-segment may now append but never undo. Backtracking is a
-deliberate act — the finger comes to rest on the previous letter — whereas
-segment crossings are just ground the finger covered on the way elsewhere.
+The discriminator is the letter the finger ends up in, evaluated once per
+gesture. Landing on a letter already in the selection means retracing back
+along the path just drawn, so crossings undo. Landing on a new letter, or in
+empty space, means heading elsewhere and everything crossed on the way is
+incidental. A forward arc through an old letter now pops nothing, while a fast
+flick back across two letters correctly pops twice.
 
 ### Submission ordering
 
@@ -231,7 +236,20 @@ Two layers, split by what is worth preserving:
   position live in `WheelGestureState` inside the composable. Nobody wants a
   half-drawn swipe restored after their phone was killed in the background, and
   keeping it out means no gesture state ever needs serialising.
-- **DataStore** for cross-session progress is *not yet implemented*.
+- **DataStore** holds cross-session progress — which levels are completed.
+  Only completion is stored; which levels are *unlocked* is derived from that
+  plus the level ordering. Two persisted fields that must agree are two fields
+  that can disagree, and derivation cannot drift. `ProgressStore` exposes a
+  `Flow`, so finishing a level in Game updates Level Select and Home without
+  any screen knowing the others exist.
+
+**Pause is a `dialog<T>` destination, not a `composable<T>`.** It renders on top
+of Game rather than replacing it, so Game stays composed, its ViewModel and
+SavedStateHandle stay alive, and Back dismisses only the dialog. Built as a
+screen, Back would pop the player out of the level and pausing would cost them
+their board. Restart works by replacing the Game entry — a new back-stack entry
+gets a new SavedStateHandle, so progress clears as a consequence of navigation
+rather than through a `reset()` method with exactly one caller.
 
 **Back-stack policy lives entirely in `NavGraph`.** Screens report what happened
 through callbacks and the graph decides where that leads. Auto-advance navigates
@@ -244,14 +262,14 @@ five already-solved boards.
 
 ## Testing
 
-89 JVM unit tests, no device or Robolectric required:
+94 JVM unit tests, no device or Robolectric required:
 
 | Area | Tests | Covers |
 |---|---|---|
-| `WheelSelectionTest` | 24 | append/backtrack/ignore, path folding, the incidental-crossing regression |
+| `WheelSelectionTest` | 26 | append/backtrack/ignore, path folding, the incidental-crossing regression |
 | `WheelGeometryTest` | 22 | layout, spacing, hit radius, segment ordering, degenerate cases |
 | `LevelDataTest` | 16 | all 15 shipped levels + 6 negative cases proving validation rejects malformed input |
-| `GameViewModelTest` | 15 | loading, submissions, the rapid-duplicate race, saved-state round trip |
+| `GameViewModelTest` | 18 | loading, submissions, the rapid-duplicate race, saved-state round trip, completion recorded once |
 | `ValidateWordTest` | 12 | resolution order and every branch |
 
 Notable: `LevelDataTest` asserts **no unintended letter runs** — two words placed
@@ -266,14 +284,10 @@ the same `SavedStateHandle`.
 
 Current and honest.
 
-- **A two-letter backtrack flick pops only one letter.** Deliberate. Only the
-  letter under the finger may undo; the alternative is the incidental-crossing
-  bug described above, which silently corrupts words during normal drawing.
-  Degrades gracefully — keep dragging and the next sample pops the next letter.
-- **No cross-session progress.** DataStore is not wired, so Level Select shows
-  all 15 unlocked with no completion marks and Home has no Continue.
-- **No pause dialog.** The nav flow specifies Home → Level Select → Gameplay →
-  Pause; the pause destination does not exist.
+- **A retracing sample that lands between letters pops nothing.** Minor and
+  self-correcting: with the finger in dead space there is no way to tell a
+  retrace from a forward sweep, so that sample is a no-op and the next sample
+  inside a letter resolves it.
 - **No micro-interactions.** Validation feedback is colour and text only — no
   tile reveal, no invalid shake, no letter scale on capture. When added they must
   be keyed on `GameUiState.submissionId` rather than on the result, or two

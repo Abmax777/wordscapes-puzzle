@@ -16,6 +16,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.wordscapes.puzzle.ui.theme.GameColors
 import com.wordscapes.puzzle.ui.theme.SkyBottom
 import com.wordscapes.puzzle.ui.theme.SkyTop
 
@@ -53,13 +56,24 @@ fun LevelSelectScreen(
                 TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
                     Text("Back", color = Color.White.copy(alpha = 0.85f))
                 }
-                Text(
-                    text = "SELECT LEVEL",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.align(Alignment.Center),
-                )
+                ) {
+                    Text(
+                        text = "SELECT LEVEL",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                    )
+                    if (state.levels.isNotEmpty()) {
+                        Text(
+                            text = "${state.completedCount} of ${state.levels.size} complete",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White.copy(alpha = 0.55f),
+                        )
+                    }
+                }
             }
 
             when {
@@ -77,21 +91,67 @@ fun LevelSelectScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(state.levelIds, key = { it }) { id ->
+                    items(state.levels, key = { it.id }) { card ->
+                        // Three visual states, deliberately distinguishable
+                        // without relying on colour alone: completed carries a
+                        // tick, locked shows a padlock and no number.
                         Box(
                             modifier = Modifier
                                 .aspectRatio(1f)
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(Color.White.copy(alpha = 0.14f))
-                                .clickable { onLevelClicked(id) },
+                                .background(
+                                    when {
+                                        card.isCompleted -> GameColors.ValidWord.copy(alpha = 0.32f)
+                                        card.isUnlocked -> Color.White.copy(alpha = 0.16f)
+                                        else -> Color.Black.copy(alpha = 0.20f)
+                                    },
+                                )
+                                .then(
+                                    if (card.isCompleted) {
+                                        Modifier.border(
+                                            BorderStroke(1.5.dp, GameColors.ValidWord),
+                                            RoundedCornerShape(16.dp),
+                                        )
+                                    } else {
+                                        Modifier
+                                    },
+                                )
+                                // Locked tiles take no click at all rather
+                                // than clicking into a rejection — an
+                                // affordance that does nothing is worse than
+                                // no affordance.
+                                .then(
+                                    if (card.isUnlocked) {
+                                        Modifier.clickable { onLevelClicked(card.id) }
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(
-                                text = "$id",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                            )
+                            if (card.isUnlocked) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${card.id}",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                    )
+                                    if (card.isCompleted) {
+                                        Text(
+                                            text = "✓",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = GameColors.ValidWord,
+                                        )
+                                    }
+                                }
+                            } else {
+                                Text(
+                                    text = "🔒",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color.White.copy(alpha = 0.35f),
+                                )
+                            }
                         }
                     }
                 }

@@ -2,7 +2,9 @@ package com.wordscapes.puzzle.di
 
 import com.wordscapes.puzzle.data.dictionary.DictionarySource
 import com.wordscapes.puzzle.data.level.LevelRepository
+import com.wordscapes.puzzle.data.progress.ProgressDataStore
 import com.wordscapes.puzzle.domain.repository.LevelCatalog
+import com.wordscapes.puzzle.domain.repository.ProgressStore
 import com.wordscapes.puzzle.domain.repository.WordLookup
 import dagger.Binds
 import dagger.Module
@@ -29,4 +31,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindLevelCatalog(impl: LevelRepository): LevelCatalog
+
+    @Binds
+    @Singleton
+    abstract fun bindProgressStore(impl: ProgressDataStore): ProgressStore
 }

@@ -4,12 +4,16 @@ import androidx.lifecycle.SavedStateHandle
 import com.wordscapes.puzzle.data.level.LevelDto
 import com.wordscapes.puzzle.data.level.LevelMapper
 import com.wordscapes.puzzle.data.level.PlacedWordDto
+import com.wordscapes.puzzle.domain.model.GameProgress
 import com.wordscapes.puzzle.domain.model.Level
 import com.wordscapes.puzzle.domain.model.WordResult
 import com.wordscapes.puzzle.domain.repository.LevelCatalog
+import com.wordscapes.puzzle.domain.repository.ProgressStore
 import com.wordscapes.puzzle.domain.repository.WordLookup
 import com.wordscapes.puzzle.domain.usecase.ValidateWord
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -60,13 +64,29 @@ class GameViewModelTest {
         override suspend fun contains(word: String) = word.uppercase() in words
     }
 
+    /** In-memory ProgressStore. Records writes so completion can be asserted. */
+    private class FakeProgress : ProgressStore {
+        val state = MutableStateFlow(GameProgress())
+        val writes = mutableListOf<Int>()
+        override val progress = state
+        override suspend fun markCompleted(levelId: Int) {
+            writes += levelId
+            state.update { it.copy(completedLevelIds = it.completedLevelIds + levelId) }
+        }
+        override suspend fun reset() {
+            state.value = GameProgress()
+        }
+    }
+
     private fun viewModel(
         levelId: Int = 1,
         levels: List<Level> = listOf(level(1), level(2)),
         saved: SavedStateHandle = SavedStateHandle(mapOf("levelId" to levelId)),
+        progress: ProgressStore = FakeProgress(),
     ) = GameViewModel(
         levelCatalog = FakeCatalog(levels),
         validateWord = ValidateWord(FakeLookup(setOf("STARE", "RATE", "TEARS"))),
+        progressStore = progress,
         savedStateHandle = saved,
     )
 
@@ -215,6 +235,53 @@ class GameViewModelTest {
         vm.submitWord("TEARS")
         advanceUntilIdle()
         assertFalse(vm.uiState.value.isComplete)
+    }
+
+    // ── Progress persistence ─────────────────────────────────────────────────
+
+    @Test
+    fun `completing a level records it exactly once`() = runTest(dispatcher) {
+        val progress = FakeProgress()
+        val vm = viewModel(progress = progress)
+        advanceUntilIdle()
+
+        vm.submitWord("STARE")
+        advanceUntilIdle()
+        assertTrue("must not record before completion", progress.writes.isEmpty())
+
+        vm.submitWord("RATE")
+        advanceUntilIdle()
+        assertEquals(listOf(1), progress.writes)
+    }
+
+    @Test
+    fun `submitting again on a finished board does not record twice`() =
+        runTest(dispatcher) {
+            val progress = FakeProgress()
+            val vm = viewModel(progress = progress)
+            advanceUntilIdle()
+
+            vm.submitWord("STARE")
+            vm.submitWord("RATE")
+            advanceUntilIdle()
+            vm.submitWord("TEARS")   // a bonus word, board already complete
+            vm.submitWord("STARE")   // already found
+            advanceUntilIdle()
+
+            assertEquals(
+                "completion is a transition, not a state to re-emit",
+                listOf(1), progress.writes,
+            )
+        }
+
+    @Test
+    fun `bonus words alone do not record completion`() = runTest(dispatcher) {
+        val progress = FakeProgress()
+        val vm = viewModel(progress = progress)
+        advanceUntilIdle()
+        vm.submitWord("TEARS")
+        advanceUntilIdle()
+        assertTrue(progress.writes.isEmpty())
     }
 
     // ── Saved state ──────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wordscapes.puzzle.domain.model.WordResult
 import com.wordscapes.puzzle.domain.repository.LevelCatalog
+import com.wordscapes.puzzle.domain.repository.ProgressStore
 import com.wordscapes.puzzle.domain.usecase.ValidateWord
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -47,6 +48,7 @@ import javax.inject.Inject
 class GameViewModel @Inject constructor(
     private val levelCatalog: LevelCatalog,
     private val validateWord: ValidateWord,
+    private val progressStore: ProgressStore,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -112,6 +114,14 @@ class GameViewModel @Inject constructor(
             foundBonusWords = snapshot.foundBonusWords,
         )
 
+        // Snapshot before/after rather than setting a flag inside update{}.
+        // MutableStateFlow.update re-runs its lambda on CAS failure, so any
+        // side effect written in there can fire more than once. Submissions
+        // are serialised so contention cannot actually happen here, but code
+        // that is only correct because of a guarantee made somewhere else is
+        // the kind that breaks quietly when that guarantee moves.
+        val before = _uiState.value
+
         _uiState.update { current ->
             current.copy(
                 revealedWordIndices = when (result) {
@@ -127,6 +137,13 @@ class GameViewModel @Inject constructor(
             )
         }
         persist()
+
+        // Recorded once, on the transition into completion. Keying on the
+        // transition rather than on isComplete matters because every later
+        // submission on a finished board would otherwise write again.
+        if (!before.isComplete && _uiState.value.isComplete) {
+            progressStore.markCompleted(level.id)
+        }
     }
 
     /** Clears the feedback so a shake or toast does not linger. */

@@ -19,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,6 +37,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wordscapes.puzzle.ui.theme.SkyBottom
 import com.wordscapes.puzzle.ui.theme.SkyTop
 import com.wordscapes.puzzle.ui.theme.WordscapesTheme
@@ -63,6 +66,31 @@ import kotlinx.coroutines.delay
 @Composable
 fun HomeScreen(
     onPlayClicked: () -> Unit,
+    onContinueClicked: (Int) -> Unit = {},
+    viewModel: HomeViewModel = hiltViewModel(),
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    HomeContent(
+        state = state,
+        onPlayClicked = onPlayClicked,
+        onContinueClicked = onContinueClicked,
+    )
+}
+
+/**
+ * Stateless half, split out so @Preview can render it.
+ *
+ * A composable that calls hiltViewModel() cannot be previewed — there is no
+ * Hilt graph in the preview host. Splitting stateful from stateless is the
+ * standard fix and is worth doing regardless: the content composable becomes
+ * a pure function of its arguments, so it can be previewed in any state and,
+ * later, screenshot- or UI-tested without a ViewModel at all.
+ */
+@Composable
+private fun HomeContent(
+    state: HomeUiState,
+    onPlayClicked: () -> Unit,
+    onContinueClicked: (Int) -> Unit,
 ) {
     var entered by remember { mutableStateOf(false) }
 
@@ -139,7 +167,7 @@ fun HomeScreen(
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
             ) {
                 Text(
-                    text  = "PLAY",
+                    text  = if (state.hasProgress) "PLAY" else "START",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight    = FontWeight.Bold,
                         letterSpacing = 3.sp,
@@ -147,14 +175,55 @@ fun HomeScreen(
                 )
             }
 
+            // Only offered once there is something to continue from. A
+            // Continue button on a fresh install that just opens level 1 is
+            // indistinguishable from Play, and makes the screen look like it
+            // has state it does not.
+            val continueId = state.continueLevelId
+            if (state.hasProgress && continueId != null) {
+                Spacer(Modifier.height(14.dp))
+                TextButton(onClick = { onContinueClicked(continueId) }) {
+                    Text(
+                        text = if (state.allComplete) {
+                            "Replay level $continueId"
+                        } else {
+                            "Continue · level $continueId"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White.copy(alpha = 0.85f),
+                    )
+                }
+                Text(
+                    text = "${state.completedCount} of ${state.totalLevels} complete",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.45f),
+                )
+            }
+
         }
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0D3B6B)
+@Preview(name = "Fresh install", showBackground = true, backgroundColor = 0xFF0D3B6B)
 @Composable
-private fun HomeScreenPreview() {
+private fun HomeFreshPreview() {
     WordscapesTheme {
-        HomeScreen(onPlayClicked = {})
+        HomeContent(
+            state = HomeUiState(continueLevelId = 1, completedCount = 0, totalLevels = 15),
+            onPlayClicked = {},
+            onContinueClicked = {},
+        )
+    }
+}
+
+@Preview(name = "With progress", showBackground = true, backgroundColor = 0xFF0D3B6B)
+@Composable
+private fun HomeWithProgressPreview() {
+    WordscapesTheme {
+        HomeContent(
+            state = HomeUiState(continueLevelId = 6, completedCount = 5, totalLevels = 15),
+            onPlayClicked = {},
+            onContinueClicked = {},
+        )
     }
 }
