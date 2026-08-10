@@ -274,6 +274,32 @@ five already-solved boards.
 
 ---
 
+## Verified on hardware
+
+Unit tests cover logic; these were run by hand on a physical device, because
+neither gesture feel nor lifecycle behaviour is reachable from the JVM.
+
+**Gesture (8 cases).** Rapid consecutive swipes; second finger mid-drag;
+drag off-screen and back; release away from a letter; release with nothing
+selected; retrace past the start letter; the same word submitted twice in
+quick succession; rotation mid-drag.
+
+Three bugs came out of this pass, all one root cause — a single hit radius
+shared by operations with asymmetric costs. See the swipe-logic section.
+
+**Lifecycle (6 cases).** Rotation on every screen, including mid-word;
+backgrounding and return, including from the pause dialog; the same again with
+"don't keep activities" enabled; `am kill` while backgrounded, returning via
+Recents; `am force-stop` and relaunch; back at every node including rapid
+repeated presses and presses during transitions; completing a level and going
+back; completing the final level.
+
+The two kill cases are deliberately different and both behave correctly. A
+system kill restores the board, because saved instance state survives.
+A user force-stop does not, because the task is torn down — but completed
+levels and unlock state survive it, since those live in DataStore. That split
+is the entire reason there are two persistence layers.
+
 ## Testing
 
 89 JVM unit tests, no device or Robolectric required:
@@ -306,12 +332,26 @@ Current and honest.
   tile reveal, no invalid shake, no letter scale on capture. When added they must
   be keyed on `GameUiState.submissionId` rather than on the result, or two
   identical rapid submissions produce a single animation.
-- **Rotation and process-death behaviour is unverified on hardware.**
-  `SavedStateHandle` is wired and unit-tested including a simulated process
-  death, but has not faced a real Activity recreation.
 - **No landscape-specific layout.** Rotation must not crash or lose state; it
   does not get a bespoke design.
 - **Release APK is unsigned.** Signing config is stubbed in `app/build.gradle.kts`.
+
+### A deliberate difference from the reference product
+
+Wordscapes itself is portrait-locked — on iOS at least, rotating does nothing.
+For a shipped game that is defensible: one layout to design, one to QA, and
+nobody plays a word game sideways.
+
+This app deliberately does not lock. Rotation is the cheapest way to exercise
+configuration-change handling, and locking it would hide whether that handling
+is correct rather than demonstrate it. The cost is that landscape reuses the
+portrait composition and looks cramped — see Known limitations — which is the
+right trade when the alternative is having no observable evidence that
+`SavedStateHandle` and the back stack behave.
+
+Note too that locking would not have avoided the work. "Don't keep activities"
+and real process death exercise the same restoration path with no rotation
+involved.
 
 ## Out of scope
 
