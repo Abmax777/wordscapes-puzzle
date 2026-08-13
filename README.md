@@ -3,10 +3,10 @@
 An Android word puzzle: swipe letters on a circular wheel to spell words and
 fill a crossword grid. Kotlin, Jetpack Compose, single Activity, MVVM.
 
-> **Status: in progress.** Gameplay is complete and playable end to end across
-> all 15 levels, with cross-session progress and a pause menu. The
-> micro-interaction animation pass is not built yet. See
-> [Known limitations](#known-limitations) — that section is deliberately honest
+> Playable end to end across all 15 levels, with cross-session progress, a
+> pause menu and a micro-interaction pass. Gesture and lifecycle behaviour has
+> been verified by hand on a physical device, and recomposition measured rather
+> than assumed. [Known limitations](#known-limitations) is deliberately honest
 > rather than aspirational.
 
 ---
@@ -15,8 +15,21 @@ fill a crossword grid. Kotlin, Jetpack Compose, single Activity, MVVM.
 
 ```bash
 ./gradlew :app:installDebug        # onto a connected device
-./gradlew :app:testDebugUnitTest   # 89 JVM unit tests, no device needed
+./gradlew :app:testDebugUnitTest   # 94 JVM unit tests, no device needed
+./gradlew :app:assembleRelease     # minified, shrunk and signed
 ```
+
+The release build is signed from `keystore.properties` at the repo root, which
+is gitignored, with the keystore itself kept outside the repo. When that file is
+absent the release build stays *unsigned* rather than failing, so the project
+can be cloned and assembled without a key.
+
+Release differs from debug in ways worth knowing: R8 minification and resource
+shrinking are on, so `proguard-rules.pro` carries keep rules for the
+kotlinx.serialization generated serializers. Those are reached reflectively, so
+without them R8 strips them and `levels.json` parsing fails at runtime while
+the build succeeds. The release APK has been installed and played through to
+confirm it.
 
 Requires JDK 17. Toolchain is pinned to AGP 9.2.1 / Gradle 9.4.1 — AGP 9.2 lists
 Gradle 9.4.1 as both its minimum and its default, and 9.2.1 is the ceiling the
@@ -490,12 +503,12 @@ than assumed.
 
 ## Testing
 
-89 JVM unit tests, no device or Robolectric required:
+94 JVM unit tests, no device or Robolectric required:
 
 | Area | Tests | Covers |
 |---|---|---|
 | `WheelSelectionTest` | 21 | append and retrace, path folding, two on-device regressions |
-| `WheelGeometryTest` | 22 | layout, spacing, hit radius, segment ordering, degenerate cases |
+| `WheelGeometryTest` | 27 | layout, spacing, hit radius, segment ordering, degenerate cases |
 | `LevelDataTest` | 16 | all 15 shipped levels + 6 negative cases proving validation rejects malformed input |
 | `GameViewModelTest` | 18 | loading, submissions, the rapid-duplicate race, saved-state round trip, completion recorded once |
 | `ValidateWordTest` | 12 | resolution order and every branch |
@@ -516,13 +529,10 @@ Current and honest.
   self-correcting: with the finger in dead space there is no way to tell a
   retrace from a forward sweep, so that sample is a no-op and the next sample
   inside a letter resolves it.
-- **No micro-interactions.** Validation feedback is colour and text only — no
-  tile reveal, no invalid shake, no letter scale on capture. When added they must
-  be keyed on `GameUiState.submissionId` rather than on the result, or two
-  identical rapid submissions produce a single animation.
-- **No landscape-specific layout.** Rotation must not crash or lose state; it
-  does not get a bespoke design.
-- **Release APK is unsigned.** Signing config is stubbed in `app/build.gradle.kts`.
+- **No landscape-specific layout.** Rotation neither crashes nor loses state,
+  but landscape reuses the portrait composition and the board sits centred with
+  empty margins either side. A side-by-side arrangement was scoped and
+  deliberately deferred — see the note on the reference product below.
 
 ### A deliberate difference from the reference product
 
