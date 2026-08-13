@@ -7,18 +7,8 @@ import com.wordscapes.puzzle.domain.model.LevelFormatException
 import com.wordscapes.puzzle.domain.model.PlacedWord
 
 /**
- * DTO → domain, with validation.
- *
- * Every check below exists because the failure it catches is silent otherwise:
- * a word that escapes the grid draws off-screen, a letter conflict at an
- * intersection makes a level unwinnable, and a word that isn't spellable from
- * the wheel simply can never be entered. All three look like gameplay bugs
- * days later. Catching them at load turns them into a stack trace on launch
- * with the offending level id in the message.
- *
- * This is the app-side mirror of `tools/validate_levels.py`. The generator is
- * a throwaway build tool and is not on the device; this is the check that
- * actually ships.
+ * DTO to domain. Every check catches an otherwise-silent failure: off-grid word,
+ * conflicting intersection, unspellable word. Mirrors tools/validate_levels.py.
  */
 object LevelMapper {
 
@@ -59,7 +49,7 @@ object LevelMapper {
             )
         }
 
-        // Duplicate words would let one swipe reveal two entries at once.
+        // A duplicate would let one swipe reveal two entries.
         words.groupBy { it.word }
             .filterValues { it.size > 1 }
             .keys
@@ -96,7 +86,7 @@ object LevelMapper {
                 if (existing == null) {
                     cells[pos] = GridCell(pos, letter, setOf(index))
                 } else {
-                    // Intersections must agree on their letter.
+                    // Intersections must agree.
                     if (existing.letter != letter) {
                         throw LevelFormatException(
                             "level ${dto.id}: conflict at (${pos.row},${pos.col}) — " +

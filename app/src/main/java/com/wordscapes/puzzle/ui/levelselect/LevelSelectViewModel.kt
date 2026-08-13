@@ -27,14 +27,8 @@ data class LevelSelectUiState(
 )
 
 /**
- * Lists levels with their unlock and completion state.
- *
- * Collects [ProgressStore.progress] rather than reading it once, so finishing
- * a level in Game updates this list without either screen knowing the other
- * exists. That is the reason progress is exposed as a Flow at all.
- *
- * Unlock state is derived here from the completed set plus the level ordering,
- * never persisted. See GameProgress for why.
+ * Collects progress rather than reading it once, so completing a level elsewhere
+ * updates this list. Unlock state is derived, never persisted.
  */
 @HiltViewModel
 class LevelSelectViewModel @Inject constructor(
@@ -56,8 +50,7 @@ class LevelSelectViewModel @Inject constructor(
                 return@launch
             }
 
-            // collect never returns; the coroutine lives as long as the
-            // ViewModel and re-emits whenever DataStore changes.
+            // Never returns: lives as long as the ViewModel.
             progressStore.progress.collect { progress ->
                 _uiState.update {
                     it.copy(

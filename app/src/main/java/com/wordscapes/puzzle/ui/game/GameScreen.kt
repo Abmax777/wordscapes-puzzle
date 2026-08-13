@@ -71,16 +71,8 @@ private const val SHAKE_MS = 420
 private const val SHAKE_CYCLES = 3f
 
 /**
- * The gameplay screen.
- *
- * Observes one [GameUiState] via `collectAsStateWithLifecycle`, which stops
- * collecting when the screen is not at least STARTED. Plain `collectAsState`
- * would keep the flow active while the app is backgrounded — harmless here,
- * but the habit matters as soon as a flow does real work.
- *
- * Navigation is not performed here. The screen reports *what happened* through
- * callbacks and the nav graph decides where that leads, so back-stack policy
- * lives in one place rather than being scattered across screens.
+ * The gameplay screen. Observes one GameUiState; navigation decisions are the
+ * nav graph's, so back-stack policy lives in one file.
  */
 @Composable
 fun GameScreen(
@@ -92,23 +84,18 @@ fun GameScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Gesture state deliberately lives here and not in the ViewModel: it is
-    // worthless across process death and would otherwise need serialising.
+    // Not in the ViewModel: worthless across process death.
     val wheelState = remember { WheelGestureState() }
     var showBonusList by rememberSaveable { mutableStateOf(false) }
 
-    // Keyed on submissionId, not on lastResult. Two identical rapid results
-    // would not restart a LaunchedEffect keyed on the result itself, so the
-    // second word's feedback would inherit the first one's remaining timer.
+    // Keyed on submissionId so repeated identical results still re-fire.
     LaunchedEffect(state.submissionId) {
         if (state.lastResult == null) return@LaunchedEffect
         delay(FEEDBACK_LINGER_MS)
         viewModel.consumeFeedback()
     }
 
-    // Auto-advance. Keyed on isComplete so it fires once per completion rather
-    // than on every recomposition, and the delay lets the final reveal land
-    // before the screen changes.
+    // Keyed on isComplete so it fires once; the delay lets the last reveal land.
     LaunchedEffect(state.isComplete, state.nextLevelId) {
         if (!state.isComplete) return@LaunchedEffect
         delay(AUTO_ADVANCE_DELAY_MS)
@@ -153,9 +140,7 @@ fun GameScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        // Opens the pause dialog rather than popping the
-                        // level. System Back still pops, which is the correct
-                        // platform behaviour; this is the in-game affordance.
+                        // Opens Pause; system Back still pops, which is correct.
                         TextButton(onClick = onPause) {
                             Text("Pause", color = Color.White.copy(alpha = 0.85f))
                         }
@@ -217,13 +202,7 @@ fun GameScreen(
     }
 }
 
-/**
- * Tappable count of bonus words found so far.
- *
- * Bonus words were being collected with nowhere to see them, which makes the
- * bonus feedback feel like it leads nowhere. Dimmed and inert at zero so it
- * never invites a tap that opens an empty dialog.
- */
+/** Bonus count. Inert at zero so it never opens an empty dialog. */
 @Composable
 private fun BonusChip(
     count: Int,
@@ -285,14 +264,7 @@ private fun BonusWordsDialog(
     )
 }
 
-/**
- * The three graded validation feedbacks, plus already-found as a fourth.
- *
- * Colour only for now. The shake, the tile reveal and the capture scale are
- * Day 6 — and when they arrive they must be keyed on
- * [GameUiState.submissionId], not on the result, or two identical rapid
- * submissions will produce a single animation.
- */
+/** The four validation outcomes. Colour and text; motion is keyed on submissionId. */
 @Composable
 private fun FeedbackBanner(
     state: GameUiState,
@@ -302,12 +274,8 @@ private fun FeedbackBanner(
     val density = LocalDensity.current
     val shake = remember { Animatable(0f) }
 
-    // Keyed on submissionId, NOT on lastResult.
-    //
-    // Two rejected words in a row are frequently the same string, and Compose
-    // would see an unchanged key and skip re-running this — so the second
-    // rejection would produce no shake at all. A monotonic counter makes every
-    // submission distinct. This is the reason GameUiState carries that field.
+    // Keyed on submissionId, not lastResult: two rejections are often the same
+    // string, and an unchanged key would skip the second shake entirely.
     LaunchedEffect(state.submissionId) {
         if (state.lastResult !is WordResult.Invalid) return@LaunchedEffect
         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -315,9 +283,7 @@ private fun FeedbackBanner(
         shake.animateTo(1f, tween(SHAKE_MS, easing = LinearEasing))
     }
 
-    // Every branch carries a label. An earlier version showed the bare word
-    // for Invalid, which left a red word on screen with nothing saying why it
-    // was rejected -- indistinguishable, at a glance, from one accepted.
+    // Every branch carries a label: a bare red word reads like an accepted one.
     val (text, target) = when {
         state.isComplete -> "LEVEL COMPLETE" to GameColors.ValidWord
         else -> when (val r = state.lastResult) {
@@ -335,7 +301,7 @@ private fun FeedbackBanner(
     val color by animateColorAsState(targetValue = target, label = "feedback_color")
     val amplitudePx = with(density) { 9.dp.toPx() }
 
-    // LEVEL COMPLETE lands rather than fades in.
+    // Lands rather than fades in.
     val completeScale = remember { Animatable(1f) }
     LaunchedEffect(state.isComplete) {
         if (!state.isComplete) return@LaunchedEffect
@@ -356,9 +322,7 @@ private fun FeedbackBanner(
             fontWeight = FontWeight.Bold,
             color = color,
             modifier = Modifier.graphicsLayer {
-                // Read inside graphicsLayer rather than in the composable body:
-                // the lambda runs at draw time, so 25 animation frames cost 25
-                // redraws instead of 25 recompositions of the whole banner.
+                // Runs at draw time: animation frames cost redraws, not recompositions.
                 translationX = damped(shake.value, amplitudePx)
                 scaleX = completeScale.value
                 scaleY = completeScale.value
@@ -367,13 +331,7 @@ private fun FeedbackBanner(
     }
 }
 
-/**
- * Damped oscillation: a few decreasing swings that settle at zero.
- *
- * Amplitude falls off linearly with progress so the motion ends still, rather
- * than being cut off mid-swing — a shake that stops abruptly reads as a
- * dropped frame.
- */
+/** Damped oscillation. Amplitude decays to zero so it settles rather than cutting off. */
 private fun damped(t: Float, amplitude: Float): Float {
     if (t <= 0f || t >= 1f) return 0f
     return amplitude * sin(t * SHAKE_CYCLES * 2f * Math.PI.toFloat()) * (1f - t)

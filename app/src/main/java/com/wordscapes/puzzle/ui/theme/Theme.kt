@@ -31,11 +31,7 @@ private val LightColorScheme = lightColorScheme(
     tertiary  = BlueGrey40,
 )
 
-/**
- * @param darkTheme     Defaults to true — the game's visual identity is dark.
- * @param dynamicColor  Disabled intentionally: dynamic colour would override
- *                      the bespoke sky palette and GameColors tokens.
- */
+/** dynamicColor is off: Material You would override the bespoke sky palette. */
 @Composable
 fun WordscapesTheme(
     darkTheme:    Boolean = true,

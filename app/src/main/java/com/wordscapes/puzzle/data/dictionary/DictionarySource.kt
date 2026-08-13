@@ -12,15 +12,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Bonus-word lookup, backed by `assets/dictionary.txt`.
- *
- * The generator ships only words that are sub-anagrams of at least one level's
- * wheel — 444 entries, ~4 KB — rather than a full English lexicon. A word the
- * player cannot possibly spell never needs to be looked up, so shipping it
- * would cost APK size and load time for nothing.
- *
- * Stored uppercase because that is the form the wheel emits; lowercasing on
- * every submission instead would allocate a string per swipe.
+ * Bonus-word lookup. Ships only words reachable from some level's wheel — 400
+ * entries rather than a full lexicon. Stored uppercase, the form the wheel emits.
  */
 @Singleton
 class DictionarySource @Inject constructor(

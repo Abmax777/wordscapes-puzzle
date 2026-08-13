@@ -17,11 +17,7 @@ import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * One DataStore instance per process, enforced by the delegate. Declared at
- * file scope because `preferencesDataStore` throws if the same file name is
- * delegated twice — a real crash people hit by putting it inside a class.
- */
+/** File scope: preferencesDataStore throws if the same file is delegated twice. */
 private val Context.progressDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "wordscapes_progress",
 )
@@ -31,17 +27,10 @@ class ProgressDataStore @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : ProgressStore {
 
-    /**
-     * Level ids are stored as a string set rather than, say, a comma-joined
-     * string. Preferences has no int-set type, and a delimited string would
-     * need parsing that can fail; a set of strings either contains a value or
-     * does not.
-     */
+    /** String set: Preferences has no int-set type, and a delimited string can fail to parse. */
     override val progress: Flow<GameProgress> =
         context.progressDataStore.data
-            // A corrupt or unreadable file must not take the app down. Falling
-            // back to empty means the player loses progress, which is bad; a
-            // crash loop on every launch is worse.
+            // Losing progress is bad; a crash loop on every launch is worse.
             .catch { cause ->
                 if (cause is IOException) emit(emptyPreferences()) else throw cause
             }
@@ -55,9 +44,7 @@ class ProgressDataStore @Inject constructor(
 
     override suspend fun markCompleted(levelId: Int) {
         context.progressDataStore.edit { prefs ->
-            // Read-modify-write inside edit{}, which DataStore runs under its
-            // own lock. Doing it outside would race two levels completing in
-            // quick succession and silently drop one.
+            // Inside edit{}, under DataStore's lock: outside would race and drop one.
             val current = prefs[KEY_COMPLETED] ?: emptySet()
             prefs[KEY_COMPLETED] = current + levelId.toString()
         }

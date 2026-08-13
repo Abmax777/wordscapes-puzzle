@@ -25,16 +25,8 @@ import com.wordscapes.puzzle.ui.pause.PauseDialog
 private const val TRANSITION_MS = 300
 
 /**
- * Root navigation host.
- *
- * All back-stack policy lives here rather than inside screens, so there is one
- * place to reason about what Back does at every node.
- *
- * The auto-advance rule is the one worth reading. On completing a level the
- * app navigates to the next Game destination while popping the current one
- * inclusively — replacing rather than pushing. Pushing would stack a Game
- * entry per level completed, so a player who finished five levels and pressed
- * Back would walk backwards through all five, each already solved.
+ * Root nav host; all back-stack policy lives here. Auto-advance replaces the Game
+ * entry rather than pushing, or Back would walk every solved board.
  */
 @Composable
 fun WordscapesNavGraph(
@@ -72,10 +64,8 @@ fun WordscapesNavGraph(
             HomeScreen(
                 onPlayClicked = { navController.navigate(Destination.LevelSelect) },
                 onContinueClicked = { levelId ->
-                    // Push LevelSelect underneath first, so Back from a
-                    // continued level lands on the level list rather than
-                    // jumping straight out to Home. Without this the back
-                    // stack shape depends on how the player entered the level.
+                    // LevelSelect underneath first, so the stack shape is the same
+                    // however the level was entered.
                     navController.navigate(Destination.LevelSelect)
                     navController.navigate(Destination.Game(levelId))
                 },
@@ -103,22 +93,17 @@ fun WordscapesNavGraph(
                     }
                 },
                 onFinishedFinalLevel = {
-                    // Final level done — return to the level list rather than
-                    // leaving the player on a completed board with no exit.
+                    // Never strand the player on a finished board.
                     navController.popBackStack(Destination.LevelSelect, inclusive = false)
                 },
             )
         }
 
-        // dialog<T>, not composable<T>: this renders ON TOP of Game rather than
-        // replacing it, so Game stays composed and Back dismisses only this.
+        // dialog<T>: renders on top of Game, so Back dismisses only this.
         dialog<Destination.Pause> { entry ->
             val pause: Destination.Pause = entry.toRoute()
 
-            // Reach the Game entry's ViewModel rather than letting
-            // hiltViewModel() build a second one scoped to this dialog. A
-            // fresh instance would report 0 of N words and, worse, would run
-            // its own submission channel against the same SavedStateHandle.
+            // The Game entry's ViewModel, not a second one scoped to this dialog.
             val gameEntry = remember(entry) {
                 navController.getBackStackEntry(Destination.Game(pause.levelId))
             }
@@ -131,10 +116,8 @@ fun WordscapesNavGraph(
                 wordsTotal = state.wordsTotal,
                 onResume = { navController.popBackStack() },
                 onRestart = {
-                    // Replace the Game entry with a fresh one. The new entry
-                    // gets a new SavedStateHandle, so revealed words and bonus
-                    // words reset without the ViewModel needing a reset method
-                    // that only this one caller would ever use.
+                    // A fresh entry means a fresh SavedStateHandle, so state clears
+                    // without a reset() that only one caller would use.
                     navController.navigate(Destination.Game(pause.levelId)) {
                         popUpTo(Destination.Game(pause.levelId)) { inclusive = true }
                         launchSingleTop = true

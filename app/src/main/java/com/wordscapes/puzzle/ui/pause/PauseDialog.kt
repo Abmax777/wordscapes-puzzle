@@ -24,16 +24,7 @@ import androidx.compose.ui.window.Dialog
 import com.wordscapes.puzzle.ui.theme.GameColors
 import com.wordscapes.puzzle.ui.theme.SkyTop
 
-/**
- * Pause menu, presented as a navigation dialog destination.
- *
- * Purely presentational — it reports intent through three callbacks and knows
- * nothing about where any of them lead. The nav graph owns that, same as every
- * other screen.
- *
- * No `onDismissRequest` side effects beyond resume: tapping outside or pressing
- * Back both mean "carry on playing", which is what a pause menu should do.
- */
+/** Presentational only. Tapping outside and Back both mean resume. */
 @Composable
 fun PauseDialog(
     levelId: Int,

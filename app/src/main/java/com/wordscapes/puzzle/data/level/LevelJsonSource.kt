@@ -12,13 +12,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Reads and parses `assets/levels.json`.
- *
- * Asset reads are blocking file I/O, so everything runs on the injected
- * dispatcher rather than whichever thread happened to call in. The dispatcher
- * is a constructor parameter purely so unit tests can pass an immediate one —
- * this is the ordinary way to keep a suspend function testable without a
- * scheduler.
+ * Reads and parses `assets/levels.json`. The dispatcher is injected so tests can
+ * pass an immediate one.
  */
 @Singleton
 class LevelJsonSource @Inject constructor(
@@ -26,7 +21,7 @@ class LevelJsonSource @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
     private val json = Json {
-        ignoreUnknownKeys = true   // tolerate generator debug fields
+        ignoreUnknownKeys = true   // generator debug fields
         isLenient = false          // but not malformed JSON
     }
 

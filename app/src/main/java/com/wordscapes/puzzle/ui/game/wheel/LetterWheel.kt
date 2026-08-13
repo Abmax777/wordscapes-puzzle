@@ -41,42 +41,8 @@ private val MIN_TOUCH_TARGET_RADIUS = 24.dp
 private const val CAPTURE_POP = 0.20f
 
 /**
- * The letter wheel: drawing plus continuous swipe selection.
- *
- * ## Sizing
- *
- * Does not impose a size — the caller decides via [modifier]. The disc is sized
- * from the smaller dimension so it stays circular at any aspect ratio.
- *
- * ## Why `awaitEachGesture` and not `detectDragGestures`
- *
- * `detectDragGestures` waits for touch slop (~16 dp of movement) before firing
- * `onDragStart`. For a wheel that is wrong twice over: the letter under the
- * initial press would not be selected until the finger had already travelled
- * past it, and the first ~16 dp of every swipe would be silently discarded.
- * The raw `awaitEachGesture` loop lets the press itself select a letter, which
- * is what makes the control feel immediate.
- *
- * ## Why `pointerInput` is keyed on `geometry`
- *
- * `pointerInput(key)` cancels and restarts its coroutine when the key changes.
- * Keying on [WheelGeometry] means a size change tears down the in-flight
- * gesture and rebuilds against correct positions — stale geometry would
- * hit-test against letter centres that have moved. It also gives the right
- * behaviour for rotation mid-drag: the gesture is cancelled rather than
- * completed against a stale layout.
- *
- * The keys are a dependency list, exactly like `remember(key)`. Passing `Unit`
- * — a common mistake — captures the first frame's values forever, so the wheel
- * would keep hit-testing against the original size after any resize.
- *
- * ## Why callbacks go through `rememberUpdatedState`
- *
- * The gesture coroutine outlives many recompositions. A directly captured
- * `onWordSubmitted` would be frozen at whatever it was when the coroutine
- * started, so a caller that swaps in a new lambda would find submissions still
- * going to the old one. `rememberUpdatedState` keeps the capture pointing at
- * the current value without restarting the gesture.
+ * The letter wheel: drawing plus continuous swipe selection. Caller owns the size.
+ * Raw `awaitEachGesture`; `detectDragGestures` would eat the first ~16 dp of a swipe.
  */
 @Composable
 fun LetterWheel(
@@ -93,20 +59,13 @@ fun LetterWheel(
     val currentLetters by rememberUpdatedState(letters)
     val currentOnSubmit by rememberUpdatedState(onWordSubmitted)
 
-    // One capture animation per letter. 1f at the moment of capture, springing
-    // back to 0f — an instant jump then a settle, because the letter really is
-    // captured instantly and only the recovery should be smooth.
+    // 1f at capture, springing back to 0f: instant jump, smooth recovery.
     val capture = remember(letters.size) {
         List(letters.size) { Animatable(0f) }
     }
 
-    // snapshotFlow, not LaunchedEffect(state.selection).
-    //
-    // Selection changes on every pointer sample. Using it as an effect key
-    // would recompose LetterWheel up to 120 times a second and rebuild the
-    // whole modifier chain — exactly what WheelGestureState exists to avoid.
-    // snapshotFlow observes the same state from a coroutine without ever
-    // touching composition.
+    // snapshotFlow, not LaunchedEffect(state.selection): reacting to selection
+    // without recomposing. An effect key here would recompose ~120 times a second.
     LaunchedEffect(capture) {
         var previous = emptyList<Int>()
         snapshotFlow { state.selection }.collect { current ->
@@ -125,8 +84,7 @@ fun LetterWheel(
                     }
                 }
             }
-            // Retraced letters drop their pop immediately rather than finishing
-            // an animation for a letter no longer in the word.
+            // Retraced letters drop their pop rather than animating out.
             previous.filterNot { it in currentSet }.forEach { i ->
                 capture.getOrNull(i)?.let { anim -> launch { anim.snapTo(0f) } }
             }
@@ -139,9 +97,7 @@ fun LetterWheel(
         val heightPx = with(density) { maxHeight.toPx() }
         val minHitRadiusPx = with(density) { MIN_TOUCH_TARGET_RADIUS.toPx() }
 
-        // Geometry is needed at composition time, not just at draw time,
-        // because the gesture handler hit-tests against it. Recomputed only
-        // when the inputs actually change.
+        // Needed at composition time: the gesture handler hit-tests against it.
         val geometry = remember(widthPx, heightPx, letters.size, minHitRadiusPx) {
             WheelGeometry.compute(widthPx, heightPx, letters.size, minHitRadiusPx)
         }
@@ -160,26 +116,13 @@ fun LetterWheel(
                 .fillMaxSize()
                 .pointerInput(geometry) {
                     awaitEachGesture {
-                        // requireUnconsumed = false: take the press even if an
-                        // ancestor has already looked at it.
+                        // Take the press even if an ancestor has seen it.
                         val down = awaitFirstDown(requireUnconsumed = false)
                         val pointerId = down.id
                         down.consume()
 
-                        // Resting radius on the initial press, not the
-                        // generous reach radius.
-                        //
-                        // A press is stationary and deliberate — the player is
-                        // aiming, and can be precise. A drag is neither, which
-                        // is what the generous radius exists for. Using the
-                        // reach radius here meant every point on the disc
-                        // resolved to some letter, since inflated hit circles
-                        // leave no gaps: you could not put a finger down
-                        // without committing to a letter.
-                        //
-                        // Costs nothing when the player is slightly off: the
-                        // first segment test of the drag sweeps the intended
-                        // letter with the generous radius and appends it.
+                        // Resting radius: a stationary press is deliberate and
+                        // can be precise, unlike a drag.
                         state.beginDrag(
                             down.position,
                             geometry.hitTestResting(down.position),
@@ -191,10 +134,8 @@ fun LetterWheel(
                             while (true) {
                                 val event = awaitPointerEvent()
 
-                                // Follow only the pointer that started this
-                                // gesture. A second finger landing mid-drag is
-                                // ignored entirely rather than hijacking the
-                                // selection or cancelling it.
+                                // Follow only the pointer that started this gesture;
+                                // a second finger is ignored entirely.
                                 val change = event.changes.firstOrNull { it.id == pointerId }
 
                                 if (change == null || !change.pressed) {
@@ -204,18 +145,14 @@ fun LetterWheel(
                                 }
 
                                 if (change.position != previous) {
-                                    // Segment test, not point test: at speed
-                                    // the gap between samples can be wider
-                                    // than a letter.
+                                    // Segment, not point: at speed the gap between
+                                    // samples can exceed a letter.
                                     val crossed =
                                         geometry.hitTestSegment(previous, change.position)
                                     state.onMove(
                                         position = change.position,
                                         crossed = crossed,
-                                        // Resting test, not the generous hit
-                                        // test: this index only ever drives
-                                        // retrace, and undoing must be
-                                        // deliberate.
+                                        // Only drives retrace, so use the strict radius.
                                         pointerIndex =
                                             geometry.hitTestResting(change.position),
                                     )
@@ -224,21 +161,18 @@ fun LetterWheel(
                                 change.consume()
                             }
                         } finally {
-                            // Cancellation — rotation, size change, a parent
-                            // stealing the gesture. Drop the selection without
-                            // submitting a word the player never finished.
+                            // Rotation, size change, parent steal: drop without submitting.
                             if (!completed) state.cancel()
                         }
                     }
                 }
                 .drawWithCache {
-                    // ── Cache phase: only re-runs when geometry or glyphs change ──
+                    // Cache phase: re-runs only on geometry or glyph change.
                     val lineWidth = geometry.letterRadius * 0.34f
                     val selectedRing = Stroke(width = geometry.letterRadius * 0.16f)
 
                     onDrawBehind {
-                        // ── Draw phase: state read here invalidates only the
-                        //    draw, never the cache above ──
+                        // Draw phase: state read here invalidates draw only.
                         val selection = state.selection
                         val pointer = state.pointer
 
@@ -258,10 +192,7 @@ fun LetterWheel(
                             }
                         }
 
-                        // Trail: joined segments through every selected centre,
-                        // then one live segment to the raw pointer. Drawn as a
-                        // single Path so the joins are mitred rather than
-                        // showing seams at each letter.
+                        // Single Path so joins are mitred rather than seamed.
                         if (selection.isNotEmpty()) {
                             val path = Path()
                             val first = geometry.letterCenters[selection.first()]
@@ -271,8 +202,7 @@ fun LetterWheel(
                                 path.lineTo(c.x, c.y)
                             }
                             if (pointer != null) {
-                                // No smoothing on this segment — easing here
-                                // reads as input lag.
+                                // No smoothing: easing here reads as input lag.
                                 path.lineTo(pointer.x, pointer.y)
                             }
                             drawPath(
@@ -288,8 +218,7 @@ fun LetterWheel(
 
                         geometry.letterCenters.forEachIndexed { i, c ->
                             val isSelected = i in selection
-                            // Snapshot read at draw time: an animation frame
-                            // costs a redraw, never a recomposition.
+                            // Read at draw time: a frame costs a redraw, not a recompose.
                             val pop = 1f + (capture.getOrNull(i)?.value ?: 0f) * CAPTURE_POP
 
                             scale(scale = pop, pivot = c) {
@@ -335,14 +264,7 @@ fun LetterWheel(
     }
 }
 
-/**
- * Clear first, then emit.
- *
- * The ordering is the point. [WheelGestureState.endDrag] wipes the selection
- * before this function calls back, so validation and its animations run
- * against an already-empty wheel. A second swipe starting immediately cannot
- * append onto the previous word.
- */
+/** Clears the selection before emitting, so a second swipe cannot append to it. */
 private fun submit(
     state: WheelGestureState,
     letters: List<Char>,

@@ -10,13 +10,8 @@ import javax.inject.Qualifier
 import javax.inject.Singleton
 
 /**
- * Dispatchers are injected rather than referenced as `Dispatchers.IO` directly
- * at the call site. The reason is testability: a unit test can bind an
- * immediate dispatcher and get deterministic ordering, which is not possible
- * if the class reaches for the global object itself.
- *
- * A qualifier is required because `CoroutineDispatcher` is a common type —
- * without one, Hilt cannot tell an IO dispatcher from a Default dispatcher.
+ * Dispatchers are injected so tests can bind an immediate one. A qualifier is
+ * required because CoroutineDispatcher is too common a type for Hilt to resolve.
  */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
@@ -30,13 +25,13 @@ annotation class DefaultDispatcher
 @InstallIn(SingletonComponent::class)
 object DispatcherModule {
 
-    /** Blocking file I/O: reading assets. */
+    /** Blocking file I/O. */
     @Provides
     @Singleton
     @IoDispatcher
     fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
 
-    /** CPU-bound work: anagram checks, grid derivation. */
+    /** CPU-bound work. */
     @Provides
     @Singleton
     @DefaultDispatcher

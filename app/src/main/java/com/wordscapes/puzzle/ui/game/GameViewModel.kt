@@ -17,32 +17,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Owns the durable state of one level: which grid words are revealed and which
- * bonus words have been found.
- *
- * ## Submissions are serialised through a Channel
- *
- * The obvious implementation launches a coroutine per submitted word. That has
- * a real race: validation suspends on the dictionary lookup, so two swipes in
- * quick succession both read the same "revealed" snapshot before either
- * writes. Submit the same word twice fast enough and it resolves as a fresh
- * grid word both times — one of the rapid-swipe edge cases on the test list.
- *
- * Funnelling every submission through an unlimited Channel consumed by a
- * single coroutine makes handling strictly sequential: word N is fully
- * resolved and written before word N+1 is read. [submitWord] stays
- * non-blocking, so the wheel never waits on validation, and the buffer absorbs
- * a burst of fast swipes rather than dropping them.
- *
- * ## SavedStateHandle holds the level, not the gesture
- *
- * Revealed words and found bonus words are written to [SavedStateHandle] on
- * every change, so a level interrupted by process death resumes intact. They
- * are stored as primitive arrays because that is what a Bundle can carry — a
- * Set would not survive.
- *
- * Cross-session progress (highest level unlocked) is DataStore's job on Day 5,
- * not this class's. SavedStateHandle is for in-flight state only.
+ * Owns one level's durable state. Submissions are serialised through a Channel:
+ * validation suspends, so concurrent swipes would read the same stale snapshot.
  */
 @HiltViewModel
 class GameViewModel @Inject constructor(
@@ -55,10 +31,7 @@ class GameViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
 
-    /**
-     * Unlimited so a burst of rapid swipes is buffered rather than dropped.
-     * A conflated channel would discard the middle of a fast sequence.
-     */
+    /** Unlimited: a conflated channel would drop the middle of a fast sequence. */
     private val submissions = Channel<String>(Channel.UNLIMITED)
 
     private val levelId: Int =
@@ -98,7 +71,7 @@ class GameViewModel @Inject constructor(
         }
     }
 
-    /** Non-blocking. The wheel never waits on validation. */
+    /** Non-blocking; the wheel never waits on validation. */
     fun submitWord(word: String) {
         submissions.trySend(word)
     }
@@ -114,12 +87,8 @@ class GameViewModel @Inject constructor(
             foundBonusWords = snapshot.foundBonusWords,
         )
 
-        // Snapshot before/after rather than setting a flag inside update{}.
-        // MutableStateFlow.update re-runs its lambda on CAS failure, so any
-        // side effect written in there can fire more than once. Submissions
-        // are serialised so contention cannot actually happen here, but code
-        // that is only correct because of a guarantee made somewhere else is
-        // the kind that breaks quietly when that guarantee moves.
+        // Snapshot before/after rather than a flag inside update{}, whose lambda
+        // re-runs on CAS failure and would fire side effects twice.
         val before = _uiState.value
 
         _uiState.update { current ->
@@ -138,15 +107,13 @@ class GameViewModel @Inject constructor(
         }
         persist()
 
-        // Recorded once, on the transition into completion. Keying on the
-        // transition rather than on isComplete matters because every later
-        // submission on a finished board would otherwise write again.
+        // On the transition, not the state: otherwise every later submission writes again.
         if (!before.isComplete && _uiState.value.isComplete) {
             progressStore.markCompleted(level.id)
         }
     }
 
-    /** Clears the feedback so a shake or toast does not linger. */
+    /** Clears feedback so it does not linger. */
     fun consumeFeedback() {
         _uiState.update { it.copy(lastResult = null) }
     }
@@ -166,12 +133,8 @@ class GameViewModel @Inject constructor(
     }
 
     private companion object {
-        /**
-         * Matches the property name on Destination.Game. Type-safe navigation
-         * stores route arguments under their property names, so reading the
-         * key directly works and keeps this class testable with a plain
-         * SavedStateHandle(mapOf(...)) instead of a real NavBackStackEntry.
-         */
+        /** Matches the property name on Destination.Game, so tests can use a plain
+         *  SavedStateHandle(mapOf(...)) instead of a real NavBackStackEntry. */
         const val ARG_LEVEL_ID = "levelId"
         const val KEY_REVEALED = "revealedWordIndices"
         const val KEY_BONUS = "foundBonusWords"

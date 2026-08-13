@@ -6,11 +6,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Using system Roboto for Day 0.
-// To add a custom font on Day 6:
-//   1. Drop the .ttf into res/font/
-//   2. val GameFont = FontFamily(Font(R.font.your_font, FontWeight.Normal), ...)
-//   3. Replace FontFamily.Default below with GameFont.
+// System Roboto throughout; a custom face would drop into res/font/ and replace
+// FontFamily.Default below.
 
 val Typography = Typography(
     // Game title on Home screen

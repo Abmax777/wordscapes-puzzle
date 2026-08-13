@@ -44,25 +44,7 @@ import com.wordscapes.puzzle.ui.theme.SkyTop
 import com.wordscapes.puzzle.ui.theme.WordscapesTheme
 import kotlinx.coroutines.delay
 
-/**
- * Entry screen — sky gradient background, title, single PLAY button.
- *
- * Animation notes (Compose-specific idioms):
- *
- * - [animateFloatAsState] is a one-shot, state-driven animation driven by a
- *   Boolean toggle. There is no animation object to manage; recomposition
- *   triggered by the state change is what kicks it off. The `label` parameter
- *   is mandatory in Compose 1.5+ and used by the Layout Inspector.
- *
- * - [LaunchedEffect(Unit)] starts a coroutine scoped to this composable's
- *   lifecycle. The `Unit` key means "run once on entry, cancel on exit" —
- *   the same guarantee as onStart/onStop in a Fragment. We delay 80 ms so
- *   the animation is visible on a fresh cold-start render rather than
- *   being skipped by the first frame.
- *
- * - Both alpha and scale animate in parallel — no need to sequence them
- *   because animateFloatAsState is launched by the same state flip.
- */
+/** Title screen. Fade and scale on entry; Continue appears only once there is progress. */
 @Composable
 fun HomeScreen(
     onPlayClicked: () -> Unit,
@@ -77,15 +59,7 @@ fun HomeScreen(
     )
 }
 
-/**
- * Stateless half, split out so @Preview can render it.
- *
- * A composable that calls hiltViewModel() cannot be previewed — there is no
- * Hilt graph in the preview host. Splitting stateful from stateless is the
- * standard fix and is worth doing regardless: the content composable becomes
- * a pure function of its arguments, so it can be previewed in any state and,
- * later, screenshot- or UI-tested without a ViewModel at all.
- */
+/** Stateless half: a composable calling hiltViewModel() cannot be previewed. */
 @Composable
 private fun HomeContent(
     state: HomeUiState,
@@ -127,10 +101,7 @@ private fun HomeContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            // 48sp with 4sp tracking overflows a 360dp screen and wraps to
-            // "WORDSCAPE / S". maxLines pins the single-line intent; the size
-            // and tracking are dialled back until it fits with margin to
-            // spare, including at raised system font scales.
+            // 48sp/4sp tracking wrapped to "WORDSCAPE / S" on a 360dp screen.
             Text(
                 text      = "WORDSCAPES",
                 style     = MaterialTheme.typography.displayLarge.copy(
@@ -175,10 +146,7 @@ private fun HomeContent(
                 )
             }
 
-            // Only offered once there is something to continue from. A
-            // Continue button on a fresh install that just opens level 1 is
-            // indistinguishable from Play, and makes the screen look like it
-            // has state it does not.
+            // On a fresh install Continue would be indistinguishable from Play.
             val continueId = state.continueLevelId
             if (state.hasProgress && continueId != null) {
                 Spacer(Modifier.height(14.dp))

@@ -2,14 +2,7 @@ package com.wordscapes.puzzle.domain.repository
 
 import com.wordscapes.puzzle.domain.model.Level
 
-/**
- * Read-only access to level content.
- *
- * Same reasoning as WordLookup: the concrete LevelRepository reaches assets
- * through an Android Context, so a ViewModel depending on it directly could
- * only be tested on a device. Depending on this interface means GameViewModel
- * gets ordinary JVM tests against an in-memory fake.
- */
+/** Read-only level content. An interface so ViewModels test on the JVM. */
 interface LevelCatalog {
     suspend fun getLevels(): List<Level>
     suspend fun getLevel(id: Int): Level?

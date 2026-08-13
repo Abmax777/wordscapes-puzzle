@@ -92,9 +92,8 @@ fun LevelSelectScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(state.levels, key = { it.id }) { card ->
-                        // Three visual states, deliberately distinguishable
-                        // without relying on colour alone: completed carries a
-                        // tick, locked shows a padlock and no number.
+                        // Three states, distinguishable without colour alone:
+                        // completed carries a tick, locked a padlock and no number.
                         Box(
                             modifier = Modifier
                                 .aspectRatio(1f)
@@ -116,10 +115,8 @@ fun LevelSelectScreen(
                                         Modifier
                                     },
                                 )
-                                // Locked tiles take no click at all rather
-                                // than clicking into a rejection — an
-                                // affordance that does nothing is worse than
-                                // no affordance.
+                                // Locked tiles take no click at all: an affordance
+                                // that does nothing is worse than none.
                                 .then(
                                     if (card.isUnlocked) {
                                         Modifier.clickable { onLevelClicked(card.id) }
