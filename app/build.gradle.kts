@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     // No kotlin-android: AGP 9+ provides Kotlin itself. See root build.gradle.kts.
@@ -5,6 +7,24 @@ plugins {
     alias(libs.plugins.kotlin.serialization) // type-safe nav routes + level JSON
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)                  // Hilt code-gen — do NOT mix with kapt
+}
+
+/**
+ * Release signing.
+ *
+ * Credentials live in keystore.properties at the repo root, which is
+ * gitignored, and the keystore itself lives outside the repo entirely. Neither
+ * is ever committed — see .gitignore for *.jks, *.keystore and
+ * keystore.properties.
+ *
+ * When the file is absent the release build simply stays unsigned rather than
+ * failing, so anyone can clone and `assembleRelease` without needing a key.
+ */
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -21,6 +41,17 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isDebuggable = true
@@ -32,9 +63,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            // Day 7: wire the keystore here. Read credentials from a gitignored
-            // properties file — never commit them.
-            // signingConfig = signingConfigs.getByName("release")
+            // Null when keystore.properties is absent, which leaves the APK
+            // unsigned rather than failing the build.
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
