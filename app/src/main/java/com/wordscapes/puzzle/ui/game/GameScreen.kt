@@ -1,6 +1,11 @@
 package com.wordscapes.puzzle.ui.game
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +39,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,12 +56,19 @@ import com.wordscapes.puzzle.ui.theme.GameColors
 import com.wordscapes.puzzle.ui.theme.SkyBottom
 import com.wordscapes.puzzle.ui.theme.SkyTop
 import kotlinx.coroutines.delay
+import kotlin.math.sin
 
 /** How long the completion message sits before the next level loads. */
 private const val AUTO_ADVANCE_DELAY_MS = 1100L
 
 /** How long a validation message stays on screen before fading out. */
 private const val FEEDBACK_LINGER_MS = 1400L
+
+/** Shake duration for a rejected word. */
+private const val SHAKE_MS = 420
+
+/** Full left-right cycles within that duration. */
+private const val SHAKE_CYCLES = 3f
 
 /**
  * The gameplay screen.
@@ -169,6 +185,7 @@ fun GameScreen(
                     CrosswordGrid(
                         level = level,
                         revealedWordIndices = state.revealedWordIndices,
+                        isComplete = state.isComplete,
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1.1f)
@@ -281,10 +298,26 @@ private fun FeedbackBanner(
     state: GameUiState,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = LocalHapticFeedback.current
+    val density = LocalDensity.current
+    val shake = remember { Animatable(0f) }
+
+    // Keyed on submissionId, NOT on lastResult.
+    //
+    // Two rejected words in a row are frequently the same string, and Compose
+    // would see an unchanged key and skip re-running this — so the second
+    // rejection would produce no shake at all. A monotonic counter makes every
+    // submission distinct. This is the reason GameUiState carries that field.
+    LaunchedEffect(state.submissionId) {
+        if (state.lastResult !is WordResult.Invalid) return@LaunchedEffect
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        shake.snapTo(0f)
+        shake.animateTo(1f, tween(SHAKE_MS, easing = LinearEasing))
+    }
+
     // Every branch carries a label. An earlier version showed the bare word
     // for Invalid, which left a red word on screen with nothing saying why it
-    // was rejected -- indistinguishable, at a glance, from a word that had
-    // been accepted.
+    // was rejected -- indistinguishable, at a glance, from one accepted.
     val (text, target) = when {
         state.isComplete -> "LEVEL COMPLETE" to GameColors.ValidWord
         else -> when (val r = state.lastResult) {
@@ -300,6 +333,21 @@ private fun FeedbackBanner(
         }
     }
     val color by animateColorAsState(targetValue = target, label = "feedback_color")
+    val amplitudePx = with(density) { 9.dp.toPx() }
+
+    // LEVEL COMPLETE lands rather than fades in.
+    val completeScale = remember { Animatable(1f) }
+    LaunchedEffect(state.isComplete) {
+        if (!state.isComplete) return@LaunchedEffect
+        completeScale.snapTo(0.65f)
+        completeScale.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow,
+            ),
+        )
+    }
 
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Text(
@@ -307,6 +355,26 @@ private fun FeedbackBanner(
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = color,
+            modifier = Modifier.graphicsLayer {
+                // Read inside graphicsLayer rather than in the composable body:
+                // the lambda runs at draw time, so 25 animation frames cost 25
+                // redraws instead of 25 recompositions of the whole banner.
+                translationX = damped(shake.value, amplitudePx)
+                scaleX = completeScale.value
+                scaleY = completeScale.value
+            },
         )
     }
+}
+
+/**
+ * Damped oscillation: a few decreasing swings that settle at zero.
+ *
+ * Amplitude falls off linearly with progress so the motion ends still, rather
+ * than being cut off mid-swing — a shake that stops abruptly reads as a
+ * dropped frame.
+ */
+private fun damped(t: Float, amplitude: Float): Float {
+    if (t <= 0f || t >= 1f) return 0f
+    return amplitude * sin(t * SHAKE_CYCLES * 2f * Math.PI.toFloat()) * (1f - t)
 }

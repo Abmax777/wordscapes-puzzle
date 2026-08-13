@@ -1,5 +1,8 @@
 package com.wordscapes.puzzle.ui.game.wheel
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -7,8 +10,10 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
@@ -17,6 +22,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -26,9 +32,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import com.wordscapes.puzzle.ui.theme.GameColors
+import kotlinx.coroutines.launch
 
 /** Android's minimum recommended touch target is 48 dp across. */
 private val MIN_TOUCH_TARGET_RADIUS = 24.dp
+
+/** How much larger a letter jumps at the instant it is captured. */
+private const val CAPTURE_POP = 0.20f
 
 /**
  * The letter wheel: drawing plus continuous swipe selection.
@@ -82,6 +92,47 @@ fun LetterWheel(
     // Captured by the long-lived gesture coroutine; must not go stale.
     val currentLetters by rememberUpdatedState(letters)
     val currentOnSubmit by rememberUpdatedState(onWordSubmitted)
+
+    // One capture animation per letter. 1f at the moment of capture, springing
+    // back to 0f — an instant jump then a settle, because the letter really is
+    // captured instantly and only the recovery should be smooth.
+    val capture = remember(letters.size) {
+        List(letters.size) { Animatable(0f) }
+    }
+
+    // snapshotFlow, not LaunchedEffect(state.selection).
+    //
+    // Selection changes on every pointer sample. Using it as an effect key
+    // would recompose LetterWheel up to 120 times a second and rebuild the
+    // whole modifier chain — exactly what WheelGestureState exists to avoid.
+    // snapshotFlow observes the same state from a coroutine without ever
+    // touching composition.
+    LaunchedEffect(capture) {
+        var previous = emptyList<Int>()
+        snapshotFlow { state.selection }.collect { current ->
+            val currentSet = current.toSet()
+            current.filterNot { it in previous }.forEach { i ->
+                capture.getOrNull(i)?.let { anim ->
+                    launch {
+                        anim.snapTo(1f)
+                        anim.animateTo(
+                            targetValue = 0f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium,
+                            ),
+                        )
+                    }
+                }
+            }
+            // Retraced letters drop their pop immediately rather than finishing
+            // an animation for a letter no longer in the word.
+            previous.filterNot { it in currentSet }.forEach { i ->
+                capture.getOrNull(i)?.let { anim -> launch { anim.snapTo(0f) } }
+            }
+            previous = current
+        }
+    }
 
     BoxWithConstraints(modifier) {
         val widthPx = with(density) { maxWidth.toPx() }
@@ -237,28 +288,34 @@ fun LetterWheel(
 
                         geometry.letterCenters.forEachIndexed { i, c ->
                             val isSelected = i in selection
-                            drawCircle(
-                                color = if (isSelected) GameColors.LetterSelected
-                                else GameColors.LetterTile,
-                                radius = geometry.letterRadius,
-                                center = c,
-                            )
-                            if (isSelected) {
+                            // Snapshot read at draw time: an animation frame
+                            // costs a redraw, never a recomposition.
+                            val pop = 1f + (capture.getOrNull(i)?.value ?: 0f) * CAPTURE_POP
+
+                            scale(scale = pop, pivot = c) {
                                 drawCircle(
-                                    color = Color.White,
+                                    color = if (isSelected) GameColors.LetterSelected
+                                    else GameColors.LetterTile,
                                     radius = geometry.letterRadius,
                                     center = c,
-                                    style = selectedRing,
+                                )
+                                if (isSelected) {
+                                    drawCircle(
+                                        color = Color.White,
+                                        radius = geometry.letterRadius,
+                                        center = c,
+                                        style = selectedRing,
+                                    )
+                                }
+                                val g = glyphs[i]
+                                drawText(
+                                    textLayoutResult = g,
+                                    topLeft = Offset(
+                                        x = c.x - g.size.width / 2f,
+                                        y = c.y - g.size.height / 2f,
+                                    ),
                                 )
                             }
-                            val g = glyphs[i]
-                            drawText(
-                                textLayoutResult = g,
-                                topLeft = Offset(
-                                    x = c.x - g.size.width / 2f,
-                                    y = c.y - g.size.height / 2f,
-                                ),
-                            )
                         }
 
                         if (showHitTargets) {
