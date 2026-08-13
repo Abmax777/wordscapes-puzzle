@@ -1,5 +1,7 @@
 package com.wordscapes.puzzle.domain.model
 
+import androidx.compose.runtime.Immutable
+
 /**
  * Cross-session progress. Survives the app being killed, updated, or the
  * device rebooted — unlike SavedStateHandle, which only survives within one
@@ -11,6 +13,7 @@ package com.wordscapes.puzzle.domain.model
  * highest-unlocked value and any bug, migration or hand-edit can leave it
  * pointing at a level whose predecessor was never finished.
  */
+@Immutable
 data class GameProgress(
     val completedLevelIds: Set<Int> = emptySet(),
 ) {

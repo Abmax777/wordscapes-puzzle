@@ -449,6 +449,45 @@ A user force-stop does not, because the task is torn down — but completed
 levels and unlock state survive it, since those live in DataStore. That split
 is the entire reason there are two persistence layers.
 
+## Recomposition
+
+Measured on device by logging from a `SideEffect` in each composable — one line
+per committed recomposition, skipped compositions produce nothing.
+
+| | 5s continuous drag | 6–7 words submitted |
+|---|---|---|
+| `LetterWheel` | 1 | **1** |
+| `CrosswordGrid` | 1 | 7 |
+| `GameScreen` | 3 | 21 |
+
+**The wheel recomposes once, while its parent recomposes 21 times around it.**
+Hundreds of pointer samples, a live tracking line and per-letter capture
+animations, and composition is never re-entered — every frame is a redraw. That
+is what `WheelGestureState`, the `drawWithCache` split and driving the capture
+animation from `snapshotFlow` instead of an effect key are all for.
+
+`CrosswordGrid` at 7 is one per submission, which is real work: the revealed set
+genuinely changed. `GameScreen` at 3 per submission is the state update, the
+feedback auto-clear, and load-time emissions.
+
+Two things this exercise corrected, both worth recording because the wrong
+version is the intuitive one:
+
+- An earlier reading of this showed 1 across the board and looked like a
+  perfect result. The probe itself was a composable taking a constant `String`,
+  so Compose skipped it after the first frame and it silently stopped
+  reporting. `@NonRestartableComposable` fixed it. A measurement that agrees
+  with your prediction deserves more scrutiny than one that contradicts it.
+- `LetterWheel` takes a `List<Char>`, which the compiler treats as unstable, so
+  it should in theory be non-skippable and recompose with its parent. It does
+  not, because **strong skipping** is on by default in the Kotlin 2.x Compose
+  compiler and compares unstable parameters by instance equality. Since
+  `letters` is the same instance out of the same `Level`, it skips. Reasoning
+  about stability using pre-2.0 rules gives the wrong answer.
+
+No `kotlinx-collections-immutable` refactor was needed. That was checked rather
+than assumed.
+
 ## Testing
 
 89 JVM unit tests, no device or Robolectric required:

@@ -1,6 +1,27 @@
 package com.wordscapes.puzzle.domain.model
 
+import androidx.compose.runtime.Immutable
+
+/*
+ * On @Immutable in the domain layer
+ * --------------------------------
+ * These annotations come from androidx.compose.runtime, which is a runtime
+ * contract library rather than UI — no Android, no Compose UI, and itself
+ * multiplatform, so it does not compromise the layering or a future KMP split.
+ *
+ * They are here because the Compose compiler cannot prove stability on its
+ * own: Level holds a List and a Map, both interfaces whose implementations
+ * could be mutable. Without the annotation every composable taking a Level is
+ * non-skippable and recomposes whenever its parent does. These types are
+ * constructed once by LevelMapper and never mutated, so the promise is true.
+ *
+ * The alternative is a compose stability configuration file, which keeps the
+ * annotation out of the domain entirely. Worth doing if this layering ever
+ * needs to be airtight; the annotation is the pragmatic version.
+ */
+
 /** A cell coordinate in the crossword grid. Origin is top-left, (0,0). */
+@Immutable
 data class GridPosition(val row: Int, val col: Int)
 
 /**
@@ -9,6 +30,7 @@ data class GridPosition(val row: Int, val col: Int)
  * [row]/[col] are the coordinates of the word's first letter; the word then
  * runs right if [horizontal], down otherwise.
  */
+@Immutable
 data class PlacedWord(
     val word: String,
     val row: Int,
@@ -29,6 +51,7 @@ data class PlacedWord(
  * layer needs this to decide whether revealing one word should also reveal a
  * shared letter of a word still hidden.
  */
+@Immutable
 data class GridCell(
     val position: GridPosition,
     val letter: Char,
@@ -46,6 +69,7 @@ data class GridCell(
  * [LevelFormatException] at startup instead of producing an unwinnable grid
  * that only reveals itself three words into play.
  */
+@Immutable
 data class Level(
     val id: Int,
     val letters: List<Char>,
