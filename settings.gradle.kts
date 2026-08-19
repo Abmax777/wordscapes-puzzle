@@ -20,4 +20,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Wordscapes"
-include(":app")
+include(":composeApp")
+include(":androidApp")

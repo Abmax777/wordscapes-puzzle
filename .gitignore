@@ -1,23 +1,30 @@
+# Build output — build/ matches at any depth, unlike the anchored /build that
+# only ever covered the repo root and the old single-module layout.
+build/
+.gradle/
+.kotlin/
+.cxx
+.externalNativeBuild
+/captures
+
+# Machine-local
+local.properties
 *.iml
-.gradle
-/local.properties
+.DS_Store
+**/.DS_Store
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
-.DS_Store
-**/.DS_Store
-/build
-/app/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-.kotlin/
 
-# Day 7 — release signing. Never commit these.
+# Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+
+# Release signing. Never commit these.
 *.jks
 *.keystore
 keystore.properties
